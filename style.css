@@ -13,3 +13,13 @@ body {
 button {
   font: inherit;
 }
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0 auto;
+  max-width: 960px;
+  padding: 0 24px;
+}
