@@ -1,0 +1,14 @@
+.services ul {
+  list-style: none;
+  padding: 0;
+}
+
+.services li {
+  border: 1px solid #c9d3cd;
+  padding: 12px;
+}
+
+.services button {
+  background: #e4e4e4;
+  border: 0;
+}
