@@ -1,3 +1,9 @@
+body {
+  font-family: system-ui, sans-serif;
+  color: #1d2a24;
+  line-height: 1.5;
+}
+
 .services .book {
   background: #2f7d5b;
   color: white;
