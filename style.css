@@ -9,3 +9,7 @@ body {
   color: white;
   padding: 8px 16px;
 }
+
+button {
+  font: inherit;
+}
