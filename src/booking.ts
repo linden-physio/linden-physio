@@ -16,6 +16,7 @@ const hours: Record<number, OpeningHours> = {
 const holidays: string[] = ["2026-12-24", "2026-12-25", "2026-12-26", "2026-12-31", "2027-01-01"];
 
 const bookings: Booking[] = [
+  { date: "2026-11-17", start: "11:00", end: "12:00" },
   { date: "2026-11-11", start: "09:00", end: "09:30" },
   { date: "2026-11-12", start: "14:00", end: "15:00" },
   { date: "2026-11-13", start: "09:30", end: "10:15" },
