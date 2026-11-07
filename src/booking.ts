@@ -61,7 +61,8 @@ const message = document.querySelector<HTMLParagraphElement>("#message")!;
 type FormState =
   | { kind: "editing" }
   | { kind: "invalid"; message: string }
-  | { kind: "ready"; name: string; email: string; date: string; time: string };
+  | { kind: "ready"; name: string; email: string; date: string; time: string }
+  | { kind: "sending" };
 
 let formState: FormState = { kind: "editing" };
 
