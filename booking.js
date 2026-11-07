@@ -74,6 +74,7 @@ const day = document.querySelector("#day");
 day.addEventListener("change", () => {
   list.replaceChildren();
   picked = null;
+  summary.textContent = "No time picked yet.";
   showTimes(day.value);
 });
 
