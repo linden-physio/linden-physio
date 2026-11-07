@@ -18,7 +18,7 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number): b
 
 // A visit blocks the rest of its half hour, so the next one starts on the grid.
 function blockedUntil(start: number, length: number): number {
-  return Math.floor((start + length) / 30) * 30;
+  return Math.ceil((start + length) / 30) * 30;
 }
 
 // Free start times on one day, for a visit of the given length.
