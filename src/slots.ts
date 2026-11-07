@@ -13,7 +13,7 @@ function toTime(minutes: number): string {
 }
 
 function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
-  return aStart <= bEnd && bStart <= aEnd;
+  return aStart < bEnd && bStart < aEnd;
 }
 
 // Free start times on one day, for a visit of the given length.
