@@ -83,3 +83,7 @@ footer {
   margin-block: 32px;
   color: #5b6b63;
 }
+
+img, input, select {
+  max-width: 100%;
+}
