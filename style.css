@@ -41,3 +41,8 @@ h1 {
     font-size: 1.75rem;
   }
 }
+
+.times button.picked {
+  background: #2f7d5b;
+  color: white;
+}

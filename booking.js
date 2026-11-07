@@ -43,12 +43,27 @@ function freeTimes(date, length) {
 }
 
 const list = document.querySelector("#free-times");
+const count = document.querySelector("#count");
+const summary = document.querySelector("#summary");
+let picked = null;
+
+function dayName(date) {
+  return new Date(date + "T12:00").toLocaleDateString("en-GB", { weekday: "long" });
+}
 
 function showTimes(date) {
-  for (const time of freeTimes(date, 60)) {
+  const times = freeTimes(date, 60);
+  count.textContent = times.length + " free times";
+  for (const time of times) {
     const item = document.createElement("li");
     const button = document.createElement("button");
     button.textContent = time;
+    button.addEventListener("click", () => {
+      list.querySelector(".picked")?.classList.remove("picked");
+      button.classList.add("picked");
+      picked = { date, time };
+      summary.textContent = dayName(date) + " " + time + ", first visit";
+    });
     item.append(button);
     list.append(item);
   }
