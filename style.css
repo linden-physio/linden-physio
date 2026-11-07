@@ -69,3 +69,8 @@ h1 {
   outline: 3px solid #2f7d5b;
   outline-offset: 2px;
 }
+
+.times button {
+  min-height: 44px;
+  min-width: 72px;
+}
