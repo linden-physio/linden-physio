@@ -42,6 +42,16 @@ function freeTimes(date, length) {
   return times;
 }
 
-document.querySelector("#day").addEventListener("change", (event) => {
-  console.log(freeTimes(event.target.value, 60));
-});
+const list = document.querySelector("#free-times");
+
+function showTimes(date) {
+  for (const time of freeTimes(date, 60)) {
+    const item = document.createElement("li");
+    const button = document.createElement("button");
+    button.textContent = time;
+    item.append(button);
+    list.append(item);
+  }
+}
+
+showTimes(document.querySelector("#day").value);
