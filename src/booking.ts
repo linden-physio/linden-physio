@@ -55,6 +55,16 @@ const summary = document.querySelector<HTMLParagraphElement>("#summary")!;
 const day = document.querySelector<HTMLInputElement>("#day")!;
 const service = document.querySelector<HTMLSelectElement>("#service")!;
 
+const form = document.querySelector<HTMLFormElement>("#details")!;
+const message = document.querySelector<HTMLParagraphElement>("#message")!;
+
+type FormState =
+  | { kind: "editing" }
+  | { kind: "invalid"; message: string }
+  | { kind: "ready"; name: string; email: string; date: string; time: string };
+
+let formState: FormState = { kind: "editing" };
+
 // Everything the screen shows comes from this.
 const state: { date: string; picked: string | null } = { date: day.value, picked: null };
 
@@ -82,7 +92,42 @@ function render() {
   summary.textContent = state.picked
     ? dayName(state.date) + " " + state.picked + ", " + service.selectedOptions[0].text
     : "No time picked yet.";
+
+  switch (formState.kind) {
+    case "editing":
+      message.textContent = "";
+      break;
+    case "invalid":
+      message.textContent = formState.message;
+      break;
+    case "ready":
+      message.textContent = "Ready to book " + formState.time + " for " + formState.name + ".";
+      break;
+  }
 }
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const data = new FormData(form);
+  if (state.picked === null) {
+    formState = { kind: "invalid", message: "Pick a time first." };
+  } else if (state.date < today()) {
+    formState = { kind: "invalid", message: "That day has already passed." };
+  } else {
+    formState = {
+      kind: "ready",
+      name: String(data.get("name")),
+      email: String(data.get("email")),
+      date: state.date,
+      time: state.picked,
+    };
+  }
+  render();
+});
 
 day.addEventListener("change", () => {
   state.date = day.value;
