@@ -46,3 +46,8 @@ h1 {
   background: #2f7d5b;
   color: white;
 }
+
+#details label {
+  display: block;
+  margin-block: 8px;
+}
