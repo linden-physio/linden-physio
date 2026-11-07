@@ -49,7 +49,7 @@ function dayName(date: string): string {
 
 // Rebuild the whole booking card from the state.
 function render() {
-  const times = freeTimes(state.date, Number(service.value), hours, bookings);
+  const times = holidays.includes(state.date) ? [] : freeTimes(state.date, Number(service.value), hours, bookings);
   count.textContent = times.length === 0 ? "No free times on " + dayName(state.date) : times.length + " free times";
   list.replaceChildren();
   for (const time of times) {
