@@ -6,3 +6,7 @@ The booking page for Linden Physio, a physiotherapy clinic.
 
     npm install
     npm run build
+
+## Test
+
+    npm test
