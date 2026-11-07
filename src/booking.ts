@@ -13,6 +13,7 @@ const hours: Record<number, OpeningHours> = {
 
 // Times already booked.
 const bookings: Booking[] = [
+  { date: "2026-11-09", start: "10:00", end: "11:00" },
   { date: "2026-11-10", start: "09:00", end: "10:00" },
   { date: "2026-11-11", start: "11:00", end: "12:00" },
 ];
