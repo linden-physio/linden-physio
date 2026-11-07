@@ -1,12 +1,3 @@
-// Services: mark the card whose service is picked
-const cards = document.querySelectorAll('.services li');
-for (const card of cards) {
-  card.addEventListener('change', () => {
-    for (const other of cards) other.classList.remove('picked');
-    card.classList.add('picked');
-  });
-}
-
 // Opening hours: a small panel that closes on Escape or a click outside
 const hoursButton = document.querySelector('.hours-button');
 const hours = document.querySelector('.hours');
