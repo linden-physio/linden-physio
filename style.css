@@ -87,3 +87,9 @@ footer {
 img, input, select {
   max-width: 100%;
 }
+
+#summary {
+  padding: 8px 12px;
+  background: #f1f5f2;
+  border-radius: 8px;
+}
