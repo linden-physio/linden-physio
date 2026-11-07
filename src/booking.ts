@@ -1,4 +1,4 @@
-type OpeningHours = { open: string; close: string } | "closed";
+import { freeTimes, type Booking, type OpeningHours } from "./slots.js";
 
 // The clinic's opening hours, by weekday (0 is Sunday).
 const hours: Record<number, OpeningHours> = {
@@ -11,43 +11,11 @@ const hours: Record<number, OpeningHours> = {
   6: "closed",
 };
 
-type Booking = { date: string; start: string; end: string };
-
 // Times already booked.
 const bookings: Booking[] = [
   { date: "2026-11-10", start: "09:00", end: "10:00" },
   { date: "2026-11-11", start: "11:00", end: "12:00" },
 ];
-
-function toMinutes(time: string): number {
-  const [h, m] = time.split(":");
-  return Number(h) * 60 + Number(m);
-}
-
-function toTime(minutes: number): string {
-  const h = String(Math.floor(minutes / 60)).padStart(2, "0");
-  const m = String(minutes % 60).padStart(2, "0");
-  return h + ":" + m;
-}
-
-function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
-  return aStart <= bEnd && bStart <= aEnd;
-}
-
-// Free start times on one day, for a visit of the given length.
-function freeTimes(date: string, length: number): string[] {
-  const weekday = new Date(date + "T12:00").getDay();
-  const open = hours[weekday];
-  if (open === "closed") return [];
-  const taken = bookings.filter((b) => b.date === date);
-  const times = [];
-  for (let start = toMinutes(open.open); start + length <= toMinutes(open.close); start += 30) {
-    const end = start + length;
-    const clash = taken.some((b) => overlaps(start, end, toMinutes(b.start), toMinutes(b.end)));
-    if (!clash) times.push(toTime(start));
-  }
-  return times;
-}
 
 const list = document.querySelector<HTMLUListElement>("#free-times")!;
 const count = document.querySelector<HTMLParagraphElement>("#count")!;
@@ -75,7 +43,7 @@ function dayName(date: string): string {
 
 // Rebuild the whole booking card from the state.
 function render() {
-  const times = freeTimes(state.date, Number(service.value));
+  const times = freeTimes(state.date, Number(service.value), hours, bookings);
   count.textContent = times.length === 0 ? "No free times on " + dayName(state.date) : times.length + " free times";
   list.replaceChildren();
   for (const time of times) {

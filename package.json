@@ -1,10 +1,12 @@
 {
   "name": "linden-physio",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "tsc"
   },
   "devDependencies": {
+    "@types/node": "^20.19.43",
     "typescript": "7.0.2"
   }
 }
