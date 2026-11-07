@@ -1,17 +1,3 @@
-// Opening hours: a small panel that closes on Escape or a click outside
-const hoursButton = document.querySelector('.hours-button');
-const hours = document.querySelector('.hours');
-hoursButton.addEventListener('click', (event) => {
-  event.stopPropagation();
-  hours.hidden = !hours.hidden;
-});
-document.addEventListener('click', (event) => {
-  if (!hours.contains(event.target)) hours.hidden = true;
-});
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') hours.hidden = true;
-});
-
 // Booking notice: a modal window that keeps focus inside it
 const notice = document.querySelector('.notice');
 const backdrop = document.querySelector('.backdrop');
