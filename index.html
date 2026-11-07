@@ -6,16 +6,22 @@
   <title>Linden Physio</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="services.css">
+  <link rel="stylesheet" href="extras.css">
+  <script src="script.js" defer></script>
 </head>
 <body>
   <h1>Linden Physio</h1>
   <p>Physiotherapy in the middle of town. Book a time that suits you.</p>
+  <button class="hours-button">Opening hours</button>
+  <div class="hours" hidden>
+    <p>Monday to Wednesday and Friday, 09:00 to 12:00. Thursday, 13:00 to 17:00. Closed at weekends.</p>
+  </div>
   <section class="services">
     <h2>Services</h2>
     <ul>
-      <li>First visit, 60 minutes</li>
-      <li>Follow-up, 30 minutes</li>
-      <li>Sports massage, 45 minutes</li>
+      <li><label><input type="radio" name="service"> First visit, 60 minutes</label></li>
+      <li><label><input type="radio" name="service"> Follow-up, 30 minutes</label></li>
+      <li><label><input type="radio" name="service"> Sports massage, 45 minutes</label></li>
     </ul>
     <button class="book">Book</button>
   </section>
@@ -27,6 +33,29 @@
       <li>11:30</li>
     </ul>
   </section>
-  <p><a href="mailto:hello@lindenphysio.com">Email us</a></p>
+  <section class="questions">
+    <h2>Questions</h2>
+    <button class="question" aria-expanded="false">Do I need a referral?</button>
+    <div class="answer" hidden>
+      <p>No. You can book a first visit yourself.</p>
+    </div>
+    <button class="question" aria-expanded="false">What should I wear?</button>
+    <div class="answer" hidden>
+      <p>Something you can move in easily.</p>
+    </div>
+  </section>
+  <p><a href="find-us.html">How to find us</a> · <a href="mailto:hello@lindenphysio.com">Email us</a></p>
+  <div class="backdrop" hidden></div>
+  <div class="notice" role="dialog" aria-modal="true" aria-labelledby="notice-title" hidden>
+    <h2 id="notice-title">Online booking opens soon</h2>
+    <p>Leave your email and we'll tell you when it does.</p>
+    <form class="notify" novalidate>
+      <label for="email">Email</label>
+      <input id="email">
+      <p class="error" hidden></p>
+      <button>Notify me</button>
+    </form>
+    <button class="close">Close</button>
+  </div>
 </body>
 </html>
