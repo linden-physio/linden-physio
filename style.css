@@ -64,3 +64,8 @@ h1 {
 #message:empty {
   display: none;
 }
+
+:focus-visible {
+  outline: 3px solid #2f7d5b;
+  outline-offset: 2px;
+}
