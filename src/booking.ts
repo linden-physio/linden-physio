@@ -1,6 +1,6 @@
 import { freeTimes, type Booking, type OpeningHours } from "./slots.js";
 
-// The clinic's opening hours, by weekday (0 is Sunday).
+// The clinic's opening hours, by weekday (0 is Sunday; the clinic's week starts on Monday).
 const hours: Record<number, OpeningHours> = {
   0: "closed",
   1: { open: "09:00", close: "12:00" },
