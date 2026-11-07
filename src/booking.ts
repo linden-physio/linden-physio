@@ -57,7 +57,7 @@ function dayName(date: string): string {
 
 // Rebuild the whole booking card from the state.
 function render() {
-  const times = freeTimes(state.date, service.value);
+  const times = freeTimes(state.date, Number(service.value));
   count.textContent = times.length + " free times";
   list.replaceChildren();
   for (const time of times) {
