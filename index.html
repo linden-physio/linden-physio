@@ -48,10 +48,9 @@
   <dialog class="notice" aria-labelledby="notice-title">
     <h2 id="notice-title">Online booking opens soon</h2>
     <p>Leave your email and we'll tell you when it does.</p>
-    <form class="notify" novalidate>
+    <form method="dialog">
       <label for="email">Email</label>
-      <input id="email">
-      <p class="error" hidden></p>
+      <input id="email" type="email" required>
       <button>Notify me</button>
     </form>
     <button class="close">Close</button>

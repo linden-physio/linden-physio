@@ -20,8 +20,8 @@
   background: rgb(0 0 0 / 0.4);
 }
 
-.error {
-  color: #b3261e;
+input:user-invalid {
+  border-color: #b3261e;
 }
 
 body {
