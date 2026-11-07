@@ -1,14 +1,20 @@
+type OpeningHours = { open: string; close: string } | "closed";
+
 // The clinic's opening hours, by weekday (0 is Sunday).
-const hours: Record<number, { open: string; close: string }> = {
+const hours: Record<number, OpeningHours> = {
+  0: "closed",
   1: { open: "09:00", close: "12:00" },
   2: { open: "09:00", close: "12:00" },
   3: { open: "09:00", close: "12:00" },
   4: { open: "13:00", close: "17:00" },
   5: { open: "09:00", close: "12:00" },
+  6: "closed",
 };
 
+type Booking = { date: string; start: string; end: string };
+
 // Times already booked.
-const bookings = [
+const bookings: Booking[] = [
   { date: "2026-11-10", start: "09:00", end: "10:00" },
   { date: "2026-11-11", start: "11:00", end: "12:00" },
 ];
@@ -32,6 +38,7 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number): b
 function freeTimes(date: string, length: number): string[] {
   const weekday = new Date(date + "T12:00").getDay();
   const open = hours[weekday];
+  if (open === "closed") return [];
   const taken = bookings.filter((b) => b.date === date);
   const times = [];
   for (let start = toMinutes(open.open); start + length <= toMinutes(open.close); start += 30) {
@@ -58,7 +65,7 @@ function dayName(date: string): string {
 // Rebuild the whole booking card from the state.
 function render() {
   const times = freeTimes(state.date, Number(service.value));
-  count.textContent = times.length + " free times";
+  count.textContent = times.length === 0 ? "No free times on " + dayName(state.date) : times.length + " free times";
   list.replaceChildren();
   for (const time of times) {
     const item = document.createElement("li");
