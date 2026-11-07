@@ -16,6 +16,11 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number): b
   return aStart < bEnd && bStart < aEnd;
 }
 
+// A visit blocks the rest of its half hour, so the next one starts on the grid.
+function blockedUntil(start: number, length: number): number {
+  return Math.floor((start + length) / 30) * 30;
+}
+
 // Free start times on one day, for a visit of the given length.
 export function freeTimes(
   date: string,
@@ -28,8 +33,8 @@ export function freeTimes(
   if (open === "closed") return [];
   const taken = bookings.filter((b) => b.date === date);
   const times = [];
-  for (let start = toMinutes(open.open); start + length <= toMinutes(open.close); start += 30) {
-    const end = start + length;
+  for (let start = toMinutes(open.open); blockedUntil(start, length) <= toMinutes(open.close); start += 30) {
+    const end = blockedUntil(start, length);
     const clash = taken.some((b) => overlaps(start, end, toMinutes(b.start), toMinutes(b.end)));
     if (!clash) times.push(toTime(start));
   }
