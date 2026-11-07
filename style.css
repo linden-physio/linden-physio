@@ -78,3 +78,8 @@ h1 {
 .times button {
   border-radius: 8px;
 }
+
+footer {
+  margin-block: 32px;
+  color: #5b6b63;
+}
