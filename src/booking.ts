@@ -1,5 +1,5 @@
 // The clinic's opening hours, by weekday (0 is Sunday).
-const hours = {
+const hours: Record<number, { open: string; close: string }> = {
   1: { open: "09:00", close: "12:00" },
   2: { open: "09:00", close: "12:00" },
   3: { open: "09:00", close: "12:00" },
@@ -13,23 +13,23 @@ const bookings = [
   { date: "2026-11-11", start: "11:00", end: "12:00" },
 ];
 
-function toMinutes(time) {
+function toMinutes(time: string): number {
   const [h, m] = time.split(":");
   return Number(h) * 60 + Number(m);
 }
 
-function toTime(minutes) {
+function toTime(minutes: number): string {
   const h = String(Math.floor(minutes / 60)).padStart(2, "0");
   const m = String(minutes % 60).padStart(2, "0");
   return h + ":" + m;
 }
 
-function overlaps(aStart, aEnd, bStart, bEnd) {
+function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
   return aStart <= bEnd && bStart <= aEnd;
 }
 
 // Free start times on one day, for a visit of the given length.
-function freeTimes(date, length) {
+function freeTimes(date: string, length: number): string[] {
   const weekday = new Date(date + "T12:00").getDay();
   const open = hours[weekday];
   const taken = bookings.filter((b) => b.date === date);
@@ -42,16 +42,16 @@ function freeTimes(date, length) {
   return times;
 }
 
-const list = document.querySelector("#free-times");
-const count = document.querySelector("#count");
-const summary = document.querySelector("#summary");
-const day = document.querySelector("#day");
-const service = document.querySelector("#service");
+const list = document.querySelector<HTMLUListElement>("#free-times")!;
+const count = document.querySelector<HTMLParagraphElement>("#count")!;
+const summary = document.querySelector<HTMLParagraphElement>("#summary")!;
+const day = document.querySelector<HTMLInputElement>("#day")!;
+const service = document.querySelector<HTMLSelectElement>("#service")!;
 
 // Everything the screen shows comes from this.
-const state = { date: day.value, picked: null };
+const state: { date: string; picked: string | null } = { date: day.value, picked: null };
 
-function dayName(date) {
+function dayName(date: string): string {
   return new Date(date + "T12:00").toLocaleDateString("en-GB", { weekday: "long" });
 }
 
