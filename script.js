@@ -1,45 +1,7 @@
-// Booking notice: a modal window that keeps focus inside it
+// Booking notice: a modal dialog
 const notice = document.querySelector('.notice');
-const backdrop = document.querySelector('.backdrop');
-let openedFrom = null;
-
-function focusables() {
-  return notice.querySelectorAll('a, button, input');
-}
-
-function openNotice() {
-  openedFrom = document.activeElement;
-  notice.hidden = false;
-  backdrop.hidden = false;
-  for (const element of document.body.children) {
-    if (element !== notice && element !== backdrop) element.inert = true;
-  }
-  focusables()[0].focus();
-}
-
-function closeNotice() {
-  notice.hidden = true;
-  backdrop.hidden = true;
-  for (const element of document.body.children) element.inert = false;
-  openedFrom.focus();
-}
-
-document.querySelector('.book').addEventListener('click', openNotice);
-notice.querySelector('.close').addEventListener('click', closeNotice);
-notice.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') closeNotice();
-  if (event.key !== 'Tab') return;
-  const items = focusables();
-  const first = items[0];
-  const last = items[items.length - 1];
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
-  }
-});
+document.querySelector('.book').addEventListener('click', () => notice.showModal());
+notice.querySelector('.close').addEventListener('click', () => notice.close());
 
 // Email: check the address before the form is sent
 const form = document.querySelector('.notify');
@@ -53,7 +15,7 @@ form.addEventListener('submit', (event) => {
     error.textContent = 'Please enter a valid email address.';
   } else {
     error.hidden = true;
-    closeNotice();
+    notice.close();
     return;
   }
   error.hidden = false;

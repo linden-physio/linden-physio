@@ -10,20 +10,14 @@
   background: #eef6f1;
 }
 
-.backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgb(0 0 0 / 0.4);
-}
-
 .notice {
-  position: fixed;
-  top: 20vh;
-  left: 50%;
-  translate: -50% 0;
   width: min(420px, 90vw);
   padding: 24px;
-  background: white;
+  border: 0;
+}
+
+.notice::backdrop {
+  background: rgb(0 0 0 / 0.4);
 }
 
 .error {
