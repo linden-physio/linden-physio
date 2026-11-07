@@ -45,37 +45,41 @@ function freeTimes(date, length) {
 const list = document.querySelector("#free-times");
 const count = document.querySelector("#count");
 const summary = document.querySelector("#summary");
-let picked = null;
+const day = document.querySelector("#day");
+
+// Everything the screen shows comes from this.
+const state = { date: day.value, picked: null };
 
 function dayName(date) {
   return new Date(date + "T12:00").toLocaleDateString("en-GB", { weekday: "long" });
 }
 
-function showTimes(date) {
-  const times = freeTimes(date, 60);
+// Rebuild the whole booking card from the state.
+function render() {
+  const times = freeTimes(state.date, 60);
   count.textContent = times.length + " free times";
+  list.replaceChildren();
   for (const time of times) {
     const item = document.createElement("li");
     const button = document.createElement("button");
     button.textContent = time;
+    if (time === state.picked) button.classList.add("picked");
     button.addEventListener("click", () => {
-      list.querySelector(".picked")?.classList.remove("picked");
-      button.classList.add("picked");
-      picked = { date, time };
-      summary.textContent = dayName(date) + " " + time + ", first visit";
+      state.picked = time;
+      render();
     });
     item.append(button);
     list.append(item);
   }
+  summary.textContent = state.picked
+    ? dayName(state.date) + " " + state.picked + ", first visit"
+    : "No time picked yet.";
 }
 
-const day = document.querySelector("#day");
-
 day.addEventListener("change", () => {
-  list.replaceChildren();
-  picked = null;
-  summary.textContent = "No time picked yet.";
-  showTimes(day.value);
+  state.date = day.value;
+  state.picked = null;
+  render();
 });
 
-showTimes(day.value);
+render();
