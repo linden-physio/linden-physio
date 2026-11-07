@@ -13,7 +13,7 @@ const hours: Record<number, OpeningHours> = {
 
 // Times already booked.
 // Days the clinic is closed although it is a weekday.
-const holidays: string[] = ["2026-12-24", "2026-12-25", "2026-12-26"];
+const holidays: string[] = ["2026-12-24", "2026-12-25", "2026-12-26", "2026-12-31", "2027-01-01"];
 
 const bookings: Booking[] = [
   { date: "2026-11-12", start: "14:00", end: "15:00" },
