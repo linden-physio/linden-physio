@@ -24,15 +24,6 @@ input:user-invalid {
   border-color: #b3261e;
 }
 
-body {
-  animation: fade-in 0.2s;
-}
-
-body.leaving {
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
+@view-transition {
+  navigation: auto;
 }
