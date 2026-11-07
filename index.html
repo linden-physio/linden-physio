@@ -23,7 +23,7 @@
       <li><label><input type="radio" name="service"> Follow-up, 30 minutes</label></li>
       <li><label><input type="radio" name="service"> Sports massage, 45 minutes</label></li>
     </ul>
-    <button class="book">Book</button>
+    <button class="book" commandfor="notice" command="show-modal">Book</button>
   </section>
   <section class="times">
     <h2>Free times on Tuesday</h2>
@@ -45,7 +45,7 @@
     </details>
   </section>
   <p><a href="find-us.html">How to find us</a> · <a href="mailto:hello@lindenphysio.com">Email us</a></p>
-  <dialog class="notice" aria-labelledby="notice-title">
+  <dialog id="notice" class="notice" aria-labelledby="notice-title">
     <h2 id="notice-title">Online booking opens soon</h2>
     <p>Leave your email and we'll tell you when it does.</p>
     <form method="dialog">
@@ -53,7 +53,7 @@
       <input id="email" type="email" required>
       <button>Notify me</button>
     </form>
-    <button class="close">Close</button>
+    <button commandfor="notice" command="close">Close</button>
   </dialog>
 </body>
 </html>
