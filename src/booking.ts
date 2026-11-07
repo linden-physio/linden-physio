@@ -103,6 +103,10 @@ function render() {
     case "ready":
       message.textContent = "Ready to book " + formState.time + " for " + formState.name + ".";
       break;
+    default: {
+      const unhandled: never = formState;
+      throw new Error("Unhandled form state: " + JSON.stringify(unhandled));
+    }
   }
 }
 
