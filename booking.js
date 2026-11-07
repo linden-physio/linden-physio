@@ -46,6 +46,7 @@ const list = document.querySelector("#free-times");
 const count = document.querySelector("#count");
 const summary = document.querySelector("#summary");
 const day = document.querySelector("#day");
+const service = document.querySelector("#service");
 
 // Everything the screen shows comes from this.
 const state = { date: day.value, picked: null };
@@ -56,7 +57,7 @@ function dayName(date) {
 
 // Rebuild the whole booking card from the state.
 function render() {
-  const times = freeTimes(state.date, 60);
+  const times = freeTimes(state.date, service.value);
   count.textContent = times.length + " free times";
   list.replaceChildren();
   for (const time of times) {
@@ -72,12 +73,17 @@ function render() {
     list.append(item);
   }
   summary.textContent = state.picked
-    ? dayName(state.date) + " " + state.picked + ", first visit"
+    ? dayName(state.date) + " " + state.picked + ", " + service.selectedOptions[0].text
     : "No time picked yet.";
 }
 
 day.addEventListener("change", () => {
   state.date = day.value;
+  state.picked = null;
+  render();
+});
+
+service.addEventListener("change", () => {
   state.picked = null;
   render();
 });
