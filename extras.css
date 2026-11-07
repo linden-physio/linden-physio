@@ -11,14 +11,6 @@
   background: #eef6f1;
 }
 
-.questions .question {
-  display: block;
-  background: none;
-  border: 0;
-  padding: 8px 0;
-  font-weight: bold;
-}
-
 .backdrop {
   position: fixed;
   inset: 0;

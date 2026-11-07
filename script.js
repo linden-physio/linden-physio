@@ -1,12 +1,3 @@
-// Questions: open and close each answer
-for (const question of document.querySelectorAll('.question')) {
-  question.addEventListener('click', () => {
-    const open = question.getAttribute('aria-expanded') === 'true';
-    question.setAttribute('aria-expanded', String(!open));
-    question.nextElementSibling.hidden = open;
-  });
-}
-
 // Services: mark the card whose service is picked
 const cards = document.querySelectorAll('.services li');
 for (const card of cards) {
