@@ -6,8 +6,8 @@
       "dom"
     ],
     "strict": true,
-    "rootDir": "src",
-    "outDir": "dist",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "module": "es2022",
     "moduleResolution": "bundler",
     "types": [

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { freeTimes } from "./slots.js";
+import { freeTimes } from "./slots.ts";
 
 test("a booking that ends at 10:00 leaves 10:00 free", () => {
   const hours = { 2: { open: "09:00", close: "12:00" } };
