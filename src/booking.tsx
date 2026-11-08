@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { freeTimes, type Booking, type OpeningHours } from "./slots.js";
+import { DayPicker } from "./DayPicker";
+import { TimeList } from "./TimeList";
+import { Summary } from "./Summary";
 
 // The clinic's opening hours, by weekday (0 is Sunday).
 const hours: Record<number, OpeningHours> = {
@@ -30,10 +33,6 @@ type FormState =
   | { kind: "invalid"; message: string }
   | { kind: "ready"; name: string; email: string; date: string; time: string }
   | { kind: "sending" };
-
-function dayName(date: string): string {
-  return new Date(date + "T12:00").toLocaleDateString("en-GB", { weekday: "long" });
-}
 
 function messageFor(formState: FormState): string {
   switch (formState.kind) {
@@ -104,29 +103,15 @@ function BookingSection() {
           ))}
         </select>
       </label>
-      <label>
-        Day{" "}
-        <input
-          type="date"
-          id="day"
-          value={date}
-          onChange={(event) => {
-            setDate(event.target.value);
-            setPicked(null);
-          }}
-        />
-      </label>
-      <p id="count">{times.length === 0 ? "No free times on " + dayName(date) : times.length + " free times"}</p>
-      <ul id="free-times">
-        {times.map((time) => (
-          <li key={time}>
-            <button className={time === picked ? "picked" : undefined} onClick={() => setPicked(time)}>
-              {time}
-            </button>
-          </li>
-        ))}
-      </ul>
-      <p id="summary">{picked ? dayName(date) + " " + picked + ", " + service.name : "No time picked yet."}</p>
+      <DayPicker
+        date={date}
+        onChange={(date) => {
+          setDate(date);
+          setPicked(null);
+        }}
+      />
+      <TimeList date={date} times={times} picked={picked} onPick={setPicked} />
+      <Summary date={date} picked={picked} service={service.name} />
       <form id="details" onSubmit={book}>
         <label>
           Your name <input name="name" required autoComplete="name" />
