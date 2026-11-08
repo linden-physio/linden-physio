@@ -29,7 +29,6 @@ function BookingSection() {
   const [date, setDate] = useState("2026-11-10");
   const [picked, setPicked] = useState<string | null>(null);
   const [length, setLength] = useState(60);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const service = services.find((s) => s.length === length)!;
   const times = freeTimes(date, length, hours, bookings);
@@ -39,12 +38,9 @@ function BookingSection() {
       <h2>Free times</h2>
       <ServicePicker
         length={length}
-        open={menuOpen}
-        onToggle={() => setMenuOpen(!menuOpen)}
         onChange={(length) => {
           setLength(length);
           setPicked(null);
-          setMenuOpen(false);
         }}
       />
       <DayPicker
