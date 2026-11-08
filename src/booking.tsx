@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { freeTimes, type Booking, type OpeningHours } from "./slots.js";
+import { ServicePicker, services } from "./ServicePicker";
 import { DayPicker } from "./DayPicker";
 import { TimeList } from "./TimeList";
 import { Summary } from "./Summary";
@@ -23,17 +24,12 @@ const bookings: Booking[] = [
   { date: "2026-11-11", start: "11:00", end: "12:00" },
 ];
 
-const services = [
-  { length: 60, name: "First visit, 60 minutes" },
-  { length: 30, name: "Follow-up, 30 minutes" },
-  { length: 45, name: "Sports massage, 45 minutes" },
-];
-
 // The whole booking section, described from the state.
 function BookingSection() {
   const [date, setDate] = useState("2026-11-10");
   const [picked, setPicked] = useState<string | null>(null);
   const [length, setLength] = useState(60);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const service = services.find((s) => s.length === length)!;
   const times = freeTimes(date, length, hours, bookings);
@@ -41,23 +37,16 @@ function BookingSection() {
   return (
     <section className="times">
       <h2>Free times</h2>
-      <label>
-        Service{" "}
-        <select
-          id="service"
-          value={length}
-          onChange={(event) => {
-            setLength(Number(event.target.value));
-            setPicked(null);
-          }}
-        >
-          {services.map((s) => (
-            <option key={s.length} value={s.length}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <ServicePicker
+        length={length}
+        open={menuOpen}
+        onToggle={() => setMenuOpen(!menuOpen)}
+        onChange={(length) => {
+          setLength(length);
+          setPicked(null);
+          setMenuOpen(false);
+        }}
+      />
       <DayPicker
         date={date}
         onChange={(date) => {
