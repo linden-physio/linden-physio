@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { dayName } from "./dayName";
 
 export function TimeList({
@@ -12,10 +11,9 @@ export function TimeList({
   picked: string | null;
   onPick: (time: string) => void;
 }) {
-  const [count] = useState(times.length);
   return (
     <>
-      <p id="count">{count === 0 ? "No free times on " + dayName(date) : count + " free times"}</p>
+      <p id="count">{times.length === 0 ? "No free times on " + dayName(date) : times.length + " free times"}</p>
       <ul id="free-times">
         {times.map((time) => (
           <li key={time}>
