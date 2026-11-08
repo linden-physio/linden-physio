@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { freeTimes, type Booking, type OpeningHours } from "./slots.js";
 
@@ -53,8 +54,8 @@ function messageFor(formState: FormState): string {
 
 // The whole booking section, described from the state.
 function BookingSection() {
-  const date = "2026-11-10";
-  const picked: string | null = null;
+  const [date, setDate] = useState("2026-11-10");
+  const [picked, setPicked] = useState<string | null>(null);
   const service = services[0];
   const formState: FormState = { kind: "editing" };
 
@@ -74,13 +75,24 @@ function BookingSection() {
         </select>
       </label>
       <label>
-        Day <input type="date" id="day" defaultValue={date} />
+        Day{" "}
+        <input
+          type="date"
+          id="day"
+          value={date}
+          onChange={(event) => {
+            setDate(event.target.value);
+            setPicked(null);
+          }}
+        />
       </label>
       <p id="count">{times.length === 0 ? "No free times on " + dayName(date) : times.length + " free times"}</p>
       <ul id="free-times">
         {times.map((time) => (
           <li key={time}>
-            <button className={time === picked ? "picked" : undefined}>{time}</button>
+            <button className={time === picked ? "picked" : undefined} onClick={() => setPicked(time)}>
+              {time}
+            </button>
           </li>
         ))}
       </ul>
