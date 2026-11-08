@@ -19,27 +19,8 @@
     </ul>
     <button class="book">Book</button>
   </section>
-  <section class="times">
-    <h2>Free times</h2>
-    <label>Service
-      <select id="service">
-        <option value="60">First visit, 60 minutes</option>
-        <option value="30">Follow-up, 30 minutes</option>
-        <option value="45">Sports massage, 45 minutes</option>
-      </select>
-    </label>
-    <label>Day <input type="date" id="day" value="2026-11-10"></label>
-    <p id="count"></p>
-    <ul id="free-times"></ul>
-    <p id="summary">No time picked yet.</p>
-    <form id="details">
-      <label>Your name <input name="name" required autocomplete="name"></label>
-      <label>Email <input name="email" type="email" required autocomplete="email"></label>
-      <button class="book">Book</button>
-      <p id="message" role="status"></p>
-    </form>
-  </section>
+  <div id="booking"></div>
   <p><a href="mailto:hello@lindenphysio.com">Email us</a></p>
-  <script type="module" src="/src/booking.ts"></script>
+  <script type="module" src="/src/booking.tsx"></script>
 </body>
 </html>
