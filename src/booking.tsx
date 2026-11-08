@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { freeTimes, type Booking, type OpeningHours } from "./slots.js";
 
@@ -52,21 +52,51 @@ function messageFor(formState: FormState): string {
   }
 }
 
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 // The whole booking section, described from the state.
 function BookingSection() {
   const [date, setDate] = useState("2026-11-10");
   const [picked, setPicked] = useState<string | null>(null);
-  const service = services[0];
-  const formState: FormState = { kind: "editing" };
+  const [length, setLength] = useState(60);
+  const [formState, setFormState] = useState<FormState>({ kind: "editing" });
 
-  const times = freeTimes(date, service.length, hours, bookings);
+  const service = services.find((s) => s.length === length)!;
+  const times = freeTimes(date, length, hours, bookings);
+
+  function book(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    if (picked === null) {
+      setFormState({ kind: "invalid", message: "Pick a time first." });
+    } else if (date < today()) {
+      setFormState({ kind: "invalid", message: "That day has already passed." });
+    } else {
+      setFormState({
+        kind: "ready",
+        name: String(data.get("name")),
+        email: String(data.get("email")),
+        date,
+        time: picked,
+      });
+    }
+  }
 
   return (
     <section className="times">
       <h2>Free times</h2>
       <label>
         Service{" "}
-        <select id="service" defaultValue={service.length}>
+        <select
+          id="service"
+          value={length}
+          onChange={(event) => {
+            setLength(Number(event.target.value));
+            setPicked(null);
+          }}
+        >
           {services.map((s) => (
             <option key={s.length} value={s.length}>
               {s.name}
@@ -97,7 +127,7 @@ function BookingSection() {
         ))}
       </ul>
       <p id="summary">{picked ? dayName(date) + " " + picked + ", " + service.name : "No time picked yet."}</p>
-      <form id="details" onSubmit={(event) => event.preventDefault()}>
+      <form id="details" onSubmit={book}>
         <label>
           Your name <input name="name" required autoComplete="name" />
         </label>
