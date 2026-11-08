@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { freeTimes, type Booking, type OpeningHours } from "./slots.js";
 import { DayPicker } from "./DayPicker";
 import { TimeList } from "./TimeList";
 import { Summary } from "./Summary";
+import { BookingForm } from "./BookingForm";
 
 // The clinic's opening hours, by weekday (0 is Sunday).
 const hours: Record<number, OpeningHours> = {
@@ -28,60 +29,14 @@ const services = [
   { length: 45, name: "Sports massage, 45 minutes" },
 ];
 
-type FormState =
-  | { kind: "editing" }
-  | { kind: "invalid"; message: string }
-  | { kind: "ready"; name: string; email: string; date: string; time: string }
-  | { kind: "sending" };
-
-function messageFor(formState: FormState): string {
-  switch (formState.kind) {
-    case "editing":
-      return "";
-    case "invalid":
-      return formState.message;
-    case "ready":
-      return "Ready to book " + formState.time + " for " + formState.name + ".";
-    case "sending":
-      return "Sending your booking…";
-    default: {
-      const unhandled: never = formState;
-      throw new Error("Unhandled form state: " + JSON.stringify(unhandled));
-    }
-  }
-}
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 // The whole booking section, described from the state.
 function BookingSection() {
   const [date, setDate] = useState("2026-11-10");
   const [picked, setPicked] = useState<string | null>(null);
   const [length, setLength] = useState(60);
-  const [formState, setFormState] = useState<FormState>({ kind: "editing" });
 
   const service = services.find((s) => s.length === length)!;
   const times = freeTimes(date, length, hours, bookings);
-
-  function book(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    if (picked === null) {
-      setFormState({ kind: "invalid", message: "Pick a time first." });
-    } else if (date < today()) {
-      setFormState({ kind: "invalid", message: "That day has already passed." });
-    } else {
-      setFormState({
-        kind: "ready",
-        name: String(data.get("name")),
-        email: String(data.get("email")),
-        date,
-        time: picked,
-      });
-    }
-  }
 
   return (
     <section className="times">
@@ -112,18 +67,7 @@ function BookingSection() {
       />
       <TimeList date={date} times={times} picked={picked} onPick={setPicked} />
       <Summary date={date} picked={picked} service={service.name} />
-      <form id="details" onSubmit={book}>
-        <label>
-          Your name <input name="name" required autoComplete="name" />
-        </label>
-        <label>
-          Email <input name="email" type="email" required autoComplete="email" />
-        </label>
-        <button className="book">Book</button>
-        <p id="message" role="status">
-          {messageFor(formState)}
-        </p>
-      </form>
+      <BookingForm date={date} picked={picked} />
     </section>
   );
 }
