@@ -1,30 +1,29 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import { freeTimes, nearestFreeTime, type Booking, type OpeningHours } from "./slots.js";
 import { ServiceCards, services } from "./ServiceCards";
 import { DayPicker } from "./DayPicker";
 import { TimeList } from "./TimeList";
 import { Summary } from "./Summary";
 import { BookingForm } from "./BookingForm";
-
-// Ask the server for a file and read it as JSON. A 404 or a 500 is still an answer, so check it.
-async function getJSON(path: string) {
-  const response = await fetch(path);
-  if (!response.ok) throw new Error(path + " answered " + response.status);
-  return response.json();
-}
+import { getFreeTimes, type FreeTimes } from "./api";
 
 // The whole booking section, described from the state.
-function BookingSection({ hours, bookings }: { hours: Record<number, OpeningHours>; bookings: Booking[] }) {
+function BookingSection({ first }: { first: FreeTimes }) {
   const [date, setDate] = useState("2026-11-10");
   const [picked, setPicked] = useState<string | null>(null);
-  const [length, setLength] = useState(60);
+  const [serviceId, setServiceId] = useState("first-visit");
+  const [free, setFree] = useState(first);
 
-  const service = services.find((s) => s.length === length)!;
-  const times = freeTimes(date, length, hours, bookings);
-  const closed = hours[new Date(date + "T12:00").getDay()] === "closed";
-  const nearest = closed ? nearestFreeTime(date, length, hours, bookings) : null;
+  const service = services.find((s) => s.id === serviceId)!;
+
+  // Show a day and a service, and ask the server for their free times.
+  async function show(date: string, serviceId: string) {
+    setDate(date);
+    setServiceId(serviceId);
+    setPicked(null);
+    setFree(await getFreeTimes(date, serviceId));
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -32,27 +31,22 @@ function BookingSection({ hours, bookings }: { hours: Record<number, OpeningHour
         <h2 id="service-heading" className="mb-4 text-title">
           Choose a service
         </h2>
-        <ServiceCards
-          length={length}
-          onChange={(length) => {
-            setLength(length);
-            setPicked(null);
-          }}
-        />
+        <ServiceCards service={serviceId} onChange={(serviceId) => show(date, serviceId)} />
       </section>
       <section aria-labelledby="time-heading" className="times">
         <h2 id="time-heading" className="mb-4 text-title">
           Free times
         </h2>
-        <DayPicker
-          date={date}
-          onChange={(date) => {
-            setDate(date);
-            setPicked(null);
-          }}
-        />
+        <DayPicker date={date} onChange={(date) => show(date, serviceId)} />
         <div className="mt-6">
-          <TimeList date={date} times={times} closed={closed} nearest={nearest} picked={picked} onPick={setPicked} />
+          <TimeList
+            date={date}
+            times={free.times}
+            closed={free.closed}
+            nearest={free.nearest}
+            picked={picked}
+            onPick={setPicked}
+          />
         </div>
       </section>
       <section
@@ -71,10 +65,9 @@ function BookingSection({ hours, bookings }: { hours: Record<number, OpeningHour
 
 const root = createRoot(document.querySelector("#booking")!);
 try {
-  // The clinic's opening hours, by weekday (0 is Sunday), and the times already booked.
-  // Ask for both at once, and wait for both.
-  const [hours, bookings] = await Promise.all([getJSON("/hours.json"), getJSON("/bookings.json")]);
-  root.render(<BookingSection hours={hours} bookings={bookings} />);
+  // The first day's free times, before anything is drawn.
+  const first = await getFreeTimes("2026-11-10", "first-visit");
+  root.render(<BookingSection first={first} />);
 } catch {
   root.render(
     <p role="alert" className="rounded-md bg-invalid-100 px-4 py-3 text-danger-600">
