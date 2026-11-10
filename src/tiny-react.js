@@ -27,10 +27,10 @@ function flat(children) {
 
 // Compare the new children with the old ones. Same key (or same place) and same type: keep the node.
 function update(olds, children) {
-  const byKey = new Map(olds.map((old, i) => [i, old]));
+  const byKey = new Map(olds.map((old, i) => [old.el.key ?? i, old]));
   const kids = flat(children).map((el, i) => {
-    const old = byKey.get(i);
-    if (old && old.el.type === el.type) { byKey.delete(i); return patch(old, el); }
+    const old = byKey.get(el.key ?? i);
+    if (old && old.el.type === el.type) { byKey.delete(el.key ?? i); return patch(old, el); }
     return patch({ el: { props: {} }, kids: [], hooks: [] }, el);
   });
   for (const old of byKey.values()) doms(old).forEach((node) => node.remove());
