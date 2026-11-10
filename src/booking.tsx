@@ -109,10 +109,7 @@ function BookingSection({
           picked={picked}
           service={service.name}
           serviceId={serviceId}
-          onBooked={() => {
-            setPicked(null);
-            free.refetch();
-          }}
+          onBooked={() => setPicked(null)}
         />
       </section>
     </div>
