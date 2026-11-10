@@ -12,7 +12,8 @@
     "module": "es2022",
     "moduleResolution": "bundler",
     "types": [
-      "node"
+      "node",
+      "vite/client"
     ]
   },
   "include": [

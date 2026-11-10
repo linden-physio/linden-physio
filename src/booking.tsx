@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
+import "./index.css";
 import { freeTimes, type Booking, type OpeningHours } from "./slots.js";
 import { ServicePicker, services } from "./ServicePicker";
 import { DayPicker } from "./DayPicker";
