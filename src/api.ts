@@ -15,14 +15,14 @@ const FreeTimes = z.strictObject({
 export type FreeTimes = z.infer<typeof FreeTimes>;
 
 // Ask the server for something and read the answer as JSON. A 404 or a 500 is still an answer, so check it.
-async function getJSON(path: string) {
-  const response = await fetch(api + path);
+async function getJSON(path: string, signal?: AbortSignal) {
+  const response = await fetch(api + path, { signal });
   if (!response.ok) throw new Error(path + " answered " + response.status);
   return response.json();
 }
 
-export async function getFreeTimes(date: string, service: string): Promise<FreeTimes> {
-  return FreeTimes.parse(await getJSON("/free-times?date=" + date + "&service=" + service));
+export async function getFreeTimes(date: string, service: string, signal?: AbortSignal): Promise<FreeTimes> {
+  return FreeTimes.parse(await getJSON("/free-times?date=" + date + "&service=" + service, signal));
 }
 
 // The types the contract describes, generated from the server's openapi.yaml (npm run api-types).

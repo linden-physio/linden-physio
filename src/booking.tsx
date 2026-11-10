@@ -32,15 +32,20 @@ function BookingSection() {
 
   // Keep the free times in step with the server for the day and service on screen.
   useEffect(() => {
-    getFreeTimes(date, serviceId).then(
+    // When the day or service changes before the answer comes, the cleanup below cancels the request,
+    // so an old answer can't land on the new day.
+    const controller = new AbortController();
+    getFreeTimes(date, serviceId, controller.signal).then(
       (times) => setFree({ kind: "ready", times }),
       (error) => {
+        if (controller.signal.aborted) return;
         console.error(
           error instanceof z.ZodError ? "The server's answer doesn't fit:\n" + z.prettifyError(error) : error,
         );
         setFree({ kind: "error" });
       },
     );
+    return () => controller.abort();
   }, [date, serviceId, asked]);
 
   // Show a day and a service. The effect above asks for their free times.
