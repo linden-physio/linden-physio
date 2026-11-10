@@ -16,7 +16,7 @@ export function TimeList({
       <p id="count">{times.length === 0 ? "No free times on " + dayName(date) : times.length + " free times"}</p>
       <ul id="free-times">
         {times.map((time) => (
-          <li key={time}>
+          <li>
             <button className={time === picked ? "picked" : undefined} onClick={() => onPick(time)}>
               {time}
             </button>
