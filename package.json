@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test": "node --test"
+    "test": "node --test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@rolldown/plugin-babel": "0.3.0",
@@ -15,6 +17,8 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.2.1",
     "babel-plugin-react-compiler": "1.0.0",
+    "prettier": "3.9.10",
+    "prettier-plugin-tailwindcss": "0.8.1",
     "tailwindcss": "4.3.5",
     "typescript": "7.0.2",
     "vite": "8.3.6"
