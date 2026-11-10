@@ -66,7 +66,7 @@ export function BookingForm({ date, picked }: { date: string; picked: string | n
       <Button type="submit" className="book self-start">
         Book
       </Button>
-      <p id="message" role="status" className="rounded-md px-4 py-3 break-words empty:hidden">
+      <p id="message" role="status" className={`rounded-md px-4 py-3 break-words empty:hidden bg-${formState.kind}-100`}>
         {messageFor(formState)}
       </p>
     </form>
