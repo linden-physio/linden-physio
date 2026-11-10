@@ -57,7 +57,13 @@ function BookingSection({ first }: { first: FreeTimes }) {
           Your booking
         </h2>
         <Summary date={date} picked={picked} service={service.name} />
-        <BookingForm date={date} picked={picked} service={service.name} />
+        <BookingForm
+          date={date}
+          picked={picked}
+          service={service.name}
+          serviceId={serviceId}
+          onBooked={() => show(date, serviceId)}
+        />
       </section>
     </div>
   );

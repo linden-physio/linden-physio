@@ -17,3 +17,14 @@ async function getJSON(path: string) {
 export function getFreeTimes(date: string, service: string): Promise<FreeTimes> {
   return getJSON("/free-times?date=" + date + "&service=" + service);
 }
+
+export type NewBooking = { date: string; time: string; service: string; name: string; email: string };
+
+// Send a booking. The server answers 201 when it has taken it.
+export function postBooking(booking: NewBooking): Promise<Response> {
+  return fetch(api + "/bookings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(booking),
+  });
+}

@@ -12,6 +12,7 @@ import {
 import { dayName } from "./dayName";
 import { Field } from "./Field";
 import { Message, type FormState } from "./Message";
+import { postBooking } from "./api";
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -19,7 +20,19 @@ function today(): string {
 
 type Details = { name: string; email: string; date: string; time: string };
 
-export function BookingForm({ date, picked, service }: { date: string; picked: string | null; service: string }) {
+export function BookingForm({
+  date,
+  picked,
+  service,
+  serviceId,
+  onBooked,
+}: {
+  date: string;
+  picked: string | null;
+  service: string;
+  serviceId: string;
+  onBooked: () => void;
+}) {
   const [formState, setFormState] = useState<FormState>({ kind: "editing" });
   // The booking being checked in the dialog, or null when the dialog is closed.
   const [checking, setChecking] = useState<Details | null>(null);
@@ -45,10 +58,21 @@ export function BookingForm({ date, picked, service }: { date: string; picked: s
   }
 
   // While the dialog is open, the rest of the page is hidden from screen readers, so a message
-  // set then is never read. Show it once the dialog has closed.
+  // set then is never read. Send the booking once the dialog has closed.
   function closed() {
-    if (confirmed.current) setFormState({ kind: "ready", ...confirmed.current });
+    if (confirmed.current) send(confirmed.current);
     confirmed.current = null;
+  }
+
+  async function send(details: Details) {
+    setFormState({ kind: "sending" });
+    const response = await postBooking({ ...details, service: serviceId });
+    if (response.ok) {
+      setFormState({ kind: "booked", name: details.name, date: details.date, time: details.time });
+      onBooked();
+    } else {
+      setFormState({ kind: "failed", message: "We couldn't take your booking. Please try again." });
+    }
   }
 
   return (
