@@ -1,1 +1,40 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+/* The design's variables from Figma ("Linden" collection), under the same names. */
+@theme {
+  --color-brand-700: #23614a;
+  --color-brand-600: #2f7d5b;
+  --color-brand-50: #eaf4ef;
+  --color-ink-900: #1d2a24;
+  --color-ink-600: #5b6b63;
+  --color-line-200: #d5ddd8;
+  --color-paper-50: #f7f5f0;
+  --color-surface: #ffffff;
+  --color-danger-600: #b3412e;
+  --color-danger-50: #fbece9;
+  --color-muted-100: #eef0ee;
+
+  /* Status colours: status/ready, status/invalid and status/sending in the design. */
+  --color-ready-100: var(--color-brand-50);
+  --color-invalid-100: var(--color-danger-50);
+  --color-sending-100: var(--color-muted-100);
+
+  /* space/1 to space/12 are 4 to 48 px, which is Tailwind's own scale: p-1 is 4 px, p-12 is 48 px. */
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+
+  --text-display: 2.5rem;
+  --text-display--line-height: 3rem;
+  --text-display--font-weight: 600;
+  --text-title: 1.5rem;
+  --text-title--line-height: 2rem;
+  --text-title--font-weight: 600;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.25rem;
+}
