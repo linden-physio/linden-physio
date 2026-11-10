@@ -6,6 +6,7 @@ import { DayPicker } from "./DayPicker";
 import { TimeList } from "./TimeList";
 import { Summary } from "./Summary";
 import { BookingForm } from "./BookingForm";
+import { z } from "zod";
 import { getFreeTimes, type FreeTimes } from "./api";
 
 // The whole booking section, described from the state.
@@ -74,7 +75,8 @@ try {
   // The first day's free times, before anything is drawn.
   const first = await getFreeTimes("2026-11-10", "first-visit");
   root.render(<BookingSection first={first} />);
-} catch {
+} catch (error) {
+  console.error(error instanceof z.ZodError ? "The server's answer doesn't fit:\n" + z.prettifyError(error) : error);
   root.render(
     <p role="alert" className="rounded-md bg-invalid-100 px-4 py-3 text-danger-600">
       We couldn't load the free times. Please try again in a minute, or email us.

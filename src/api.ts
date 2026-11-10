@@ -1,12 +1,17 @@
+import { z } from "zod";
+
 // The clinic's server. It works out the free times and takes bookings.
 const api = "http://localhost:3000";
 
-export type FreeTimes = {
-  closed: boolean;
-  // Each free time is an instant, like "2026-11-10T08:00:00.000Z".
-  times: { start: string }[];
-  nearest: { date: string; start: string } | null;
-};
+// What the server sends for a day's free times, checked when it arrives. Each free time is an
+// instant, like "2026-11-10T08:00:00.000Z". Strict objects, so that a field we don't expect is an
+// error too: it usually means the server changed.
+const FreeTimes = z.strictObject({
+  closed: z.boolean(),
+  times: z.array(z.strictObject({ start: z.iso.datetime() })),
+  nearest: z.strictObject({ date: z.iso.date(), start: z.iso.datetime() }).nullable(),
+});
+export type FreeTimes = z.infer<typeof FreeTimes>;
 
 // Ask the server for something and read the answer as JSON. A 404 or a 500 is still an answer, so check it.
 async function getJSON(path: string) {
@@ -15,8 +20,8 @@ async function getJSON(path: string) {
   return response.json();
 }
 
-export function getFreeTimes(date: string, service: string): Promise<FreeTimes> {
-  return getJSON("/free-times?date=" + date + "&service=" + service);
+export async function getFreeTimes(date: string, service: string): Promise<FreeTimes> {
+  return FreeTimes.parse(await getJSON("/free-times?date=" + date + "&service=" + service));
 }
 
 export type NewBooking = { start: string; service: string; name: string; email: string };
