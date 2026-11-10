@@ -12,7 +12,7 @@ export function ServiceCards({ length, onChange }: { length: number; onChange: (
       aria-label="Service"
       value={length}
       onValueChange={(value) => onChange(Number(value))}
-      className="grid grid-cols-3 gap-4"
+      className="grid grid-cols-1 gap-4 sm:grid-cols-3"
     >
       {services.map((s) => (
         <label

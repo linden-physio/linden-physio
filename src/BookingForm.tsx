@@ -75,7 +75,7 @@ export function BookingForm({ date, picked, service }: { date: string; picked: s
 
   return (
     <form id="details" onSubmit={book} className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
           <Label htmlFor="name">Your name</Label>
           <Input id="name" name="name" required autoComplete="name" className="h-10 rounded-sm bg-surface" />
@@ -85,7 +85,7 @@ export function BookingForm({ date, picked, service }: { date: string; picked: s
           <Input id="email" name="email" type="email" required autoComplete="email" className="h-10 rounded-sm bg-surface" />
         </div>
       </div>
-      <Button type="submit" className="book self-start">
+      <Button type="submit" className="book w-full sm:w-auto sm:self-start">
         Book
       </Button>
       <Dialog open={checking !== null} onOpenChange={(open) => !open && setChecking(null)}>

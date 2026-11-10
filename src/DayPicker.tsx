@@ -16,11 +16,11 @@ function weekOf(date: string): string[] {
 
 export function DayPicker({ date, onChange }: { date: string; onChange: (date: string) => void }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 sm:gap-2">
       <Button variant="outline" size="icon" onClick={() => onChange(addDays(date, -7))}>
         <ChevronLeft />
       </Button>
-      <div id="day" className="grid flex-1 grid-cols-7 gap-2">
+      <div id="day" className="grid flex-1 grid-cols-7 gap-1 sm:gap-2">
         {weekOf(date).map((day) => {
           const d = new Date(day + "T12:00");
           const isPicked = day === date;
@@ -31,7 +31,7 @@ export function DayPicker({ date, onChange }: { date: string; onChange: (date: s
               aria-pressed={isPicked}
               onClick={() => onChange(day)}
               className={
-                "flex flex-col items-center rounded-full border py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 " +
+                "flex flex-col items-center rounded-full border py-2 text-xs sm:text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 " +
                 (isPicked ? "border-brand-600 bg-brand-600 text-white" : "border-line-200 bg-surface")
               }
             >

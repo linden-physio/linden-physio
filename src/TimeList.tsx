@@ -32,7 +32,7 @@ export function TimeList({
       <p id="count" className="text-ink-600">
         {times.length === 0 ? "No free times on " + dayName(date) : times.length + " free times"}
       </p>
-      <div id="free-times" className="mt-3 flex gap-2">
+      <div id="free-times" className="mt-3 flex flex-wrap gap-2">
         {times.map((time) => (
           <div
             key={time}
