@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { ServiceCards, services } from "./ServiceCards";
@@ -8,6 +8,10 @@ import { Summary } from "./Summary";
 import { BookingForm } from "./BookingForm";
 import { z } from "zod";
 import { getFreeTimes, type FreeTimes } from "./api";
+import { Button } from "@/components/ui/button";
+
+// The free times, while we wait for them and once they've come.
+type Loaded = { kind: "loading" } | { kind: "error" } | { kind: "ready"; times: FreeTimes };
 
 // npm run dev:mock answers the requests the server can't answer yet in the browser, from the contract.
 if (import.meta.env.VITE_MOCK_API === "on") {
@@ -16,20 +20,41 @@ if (import.meta.env.VITE_MOCK_API === "on") {
 }
 
 // The whole booking section, described from the state.
-function BookingSection({ first }: { first: FreeTimes }) {
+function BookingSection() {
   const [date, setDate] = useState("2026-11-10");
   const [picked, setPicked] = useState<string | null>(null);
   const [serviceId, setServiceId] = useState("first-visit");
-  const [free, setFree] = useState(first);
+  const [free, setFree] = useState<Loaded>({ kind: "loading" });
+  // Counts the times we've asked again: after a failure, or after a booking changed the free times.
+  const [asked, setAsked] = useState(0);
 
   const service = services.find((s) => s.id === serviceId)!;
 
-  // Show a day and a service, and ask the server for their free times.
-  async function show(date: string, serviceId: string) {
+  // Keep the free times in step with the server for the day and service on screen.
+  useEffect(() => {
+    getFreeTimes(date, serviceId).then(
+      (times) => setFree({ kind: "ready", times }),
+      (error) => {
+        console.error(
+          error instanceof z.ZodError ? "The server's answer doesn't fit:\n" + z.prettifyError(error) : error,
+        );
+        setFree({ kind: "error" });
+      },
+    );
+  }, [date, serviceId, asked]);
+
+  // Show a day and a service. The effect above asks for their free times.
+  function show(date: string, serviceId: string) {
     setDate(date);
     setServiceId(serviceId);
     setPicked(null);
-    setFree(await getFreeTimes(date, serviceId));
+    setFree({ kind: "loading" });
+  }
+
+  // Ask again for the same day and service.
+  function askAgain() {
+    setFree({ kind: "loading" });
+    setAsked(asked + 1);
   }
 
   return (
@@ -46,14 +71,25 @@ function BookingSection({ first }: { first: FreeTimes }) {
         </h2>
         <DayPicker date={date} onChange={(date) => show(date, serviceId)} />
         <div className="mt-6">
-          <TimeList
-            date={date}
-            times={free.times}
-            closed={free.closed}
-            nearest={free.nearest}
-            picked={picked}
-            onPick={setPicked}
-          />
+          {free.kind === "loading" && <p className="text-ink-600">Looking for free times…</p>}
+          {free.kind === "error" && (
+            <div role="alert" className="flex items-center gap-4 rounded-md bg-invalid-100 px-4 py-3 text-danger-600">
+              We couldn't load the free times.
+              <Button variant="outline" onClick={askAgain}>
+                Try again
+              </Button>
+            </div>
+          )}
+          {free.kind === "ready" && (
+            <TimeList
+              date={date}
+              times={free.times.times}
+              closed={free.times.closed}
+              nearest={free.times.nearest}
+              picked={picked}
+              onPick={setPicked}
+            />
+          )}
         </div>
       </section>
       <section
@@ -69,23 +105,14 @@ function BookingSection({ first }: { first: FreeTimes }) {
           picked={picked}
           service={service.name}
           serviceId={serviceId}
-          onBooked={() => show(date, serviceId)}
+          onBooked={() => {
+            setPicked(null);
+            askAgain();
+          }}
         />
       </section>
     </div>
   );
 }
 
-const root = createRoot(document.querySelector("#booking")!);
-try {
-  // The first day's free times, before anything is drawn.
-  const first = await getFreeTimes("2026-11-10", "first-visit");
-  root.render(<BookingSection first={first} />);
-} catch (error) {
-  console.error(error instanceof z.ZodError ? "The server's answer doesn't fit:\n" + z.prettifyError(error) : error);
-  root.render(
-    <p role="alert" className="rounded-md bg-invalid-100 px-4 py-3 text-danger-600">
-      We couldn't load the free times. Please try again in a minute, or email us.
-    </p>,
-  );
-}
+createRoot(document.querySelector("#booking")!).render(<BookingSection />);
