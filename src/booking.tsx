@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { ServiceCards, services } from "./ServiceCards";
@@ -120,4 +120,9 @@ function BookingSection() {
   );
 }
 
-createRoot(document.querySelector("#booking")!).render(<BookingSection />);
+// In development, StrictMode runs each effect, cleans it up and runs it again, to show whether the cleanup works.
+createRoot(document.querySelector("#booking")!).render(
+  <StrictMode>
+    <BookingSection />
+  </StrictMode>,
+);
