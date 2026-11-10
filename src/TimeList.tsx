@@ -36,11 +36,12 @@ export function TimeList({
       <p id="count" className="text-ink-600">
         {times.length === 0 ? "No free times on " + dayName(date) : times.length + " free times"}
       </p>
-      <div id="free-times" className="mt-3 flex flex-wrap gap-2">
+      <fieldset id="free-times" className="mt-3 flex flex-wrap gap-2">
+        <legend className="sr-only">Pick a time</legend>
         {times.map((time) => (
           <TimeChip key={time} time={time} picked={time === picked} onPick={() => onPick(time)} />
         ))}
-      </div>
+      </fieldset>
     </>
   );
 }
