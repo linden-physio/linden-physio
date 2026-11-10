@@ -8,20 +8,12 @@ import { TimeList } from "./TimeList";
 import { Summary } from "./Summary";
 import { BookingForm } from "./BookingForm";
 
-// The clinic's opening hours, by weekday (0 is Sunday).
-const hours: Record<number, OpeningHours> = {
-  0: "closed",
-  1: { open: "09:00", close: "12:00" },
-  2: { open: "09:00", close: "12:00" },
-  3: { open: "09:00", close: "12:00" },
-  4: { open: "13:00", close: "17:00" },
-  5: { open: "09:00", close: "12:00" },
-  6: "closed",
-};
-
-// Times already booked, from a file the server sends.
-const response = await fetch("/bookings.json");
-const bookings: Booking[] = await response.json();
+// The clinic's opening hours, by weekday (0 is Sunday), and the times already booked.
+// Both come from files the server sends.
+const hoursResponse = await fetch("/hours.json");
+const hours: Record<number, OpeningHours> = await hoursResponse.json();
+const bookingsResponse = await fetch("/bookings.json");
+const bookings: Booking[] = await bookingsResponse.json();
 
 // The whole booking section, described from the state.
 function BookingSection() {
