@@ -1,5 +1,5 @@
 import { StrictMode, useState } from "react";
-import { QueryCache, QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { ServiceCards, services } from "./ServiceCards";
@@ -7,8 +7,9 @@ import { DayPicker } from "./DayPicker";
 import { TimeList } from "./TimeList";
 import { Summary } from "./Summary";
 import { BookingForm } from "./BookingForm";
+import { NextFree } from "./NextFree";
 import { z } from "zod";
-import { getFreeTimes } from "./api";
+import { useFreeTimes } from "./useFreeTimes";
 import { Button } from "@/components/ui/button";
 
 // npm run dev:mock answers the requests the server can't answer yet in the browser, from the contract.
@@ -17,20 +18,42 @@ if (import.meta.env.VITE_MOCK_API === "on") {
   await worker.start({ onUnhandledFrame: "bypass" });
 }
 
-// The whole booking section, described from the state.
-function BookingSection() {
+// The page: the header, and the booking section below it. The day and service live here, in the
+// parent of both, because both need them.
+function App() {
   const [date, setDate] = useState("2026-11-10");
-  const [picked, setPicked] = useState<string | null>(null);
   const [serviceId, setServiceId] = useState("first-visit");
+  return (
+    <>
+      <header className="mb-12 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-display">Linden Physio</h1>
+          <p className="mt-2 text-ink-600">Physiotherapy in the middle of town. Book a time that suits you.</p>
+        </div>
+        <NextFree date={date} serviceId={serviceId} />
+      </header>
+      <BookingSection date={date} setDate={setDate} serviceId={serviceId} setServiceId={setServiceId} />
+    </>
+  );
+}
+
+// The whole booking section, described from the state.
+function BookingSection({
+  date,
+  setDate,
+  serviceId,
+  setServiceId,
+}: {
+  date: string;
+  setDate: (date: string) => void;
+  serviceId: string;
+  setServiceId: (serviceId: string) => void;
+}) {
+  const [picked, setPicked] = useState<string | null>(null);
 
   const service = services.find((s) => s.id === serviceId)!;
 
-  // The free times for the day and service on screen. The key is the question; the cache keeps one
-  // answer per question, and asks the server again when an answer may be old.
-  const free = useQuery({
-    queryKey: ["free-times", date, serviceId],
-    queryFn: ({ signal }) => getFreeTimes(date, serviceId, signal),
-  });
+  const free = useFreeTimes(date, serviceId);
 
   function show(date: string, serviceId: string) {
     setDate(date);
@@ -107,10 +130,10 @@ const queryClient = new QueryClient({
 });
 
 // In development, StrictMode runs each effect, cleans it up and runs it again, to show whether the cleanup works.
-createRoot(document.querySelector("#booking")!).render(
+createRoot(document.querySelector("#app")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BookingSection />
+      <App />
     </QueryClientProvider>
   </StrictMode>,
 );
