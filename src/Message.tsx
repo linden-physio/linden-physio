@@ -30,13 +30,12 @@ const messageColour: Record<FormState["kind"], string> = {
 };
 
 export function Message({ formState }: { formState: FormState }) {
+  // The status stays on the page even when it's empty, so that a screen reader reads each new message.
   return (
-    <p
-      id="message"
-      role="status"
-      className={"rounded-md px-4 py-3 break-words empty:hidden " + messageColour[formState.kind]}
-    >
-      {messageFor(formState)}
-    </p>
+    <div role="status">
+      <p id="message" className={"rounded-md px-4 py-3 break-words empty:hidden " + messageColour[formState.kind]}>
+        {messageFor(formState)}
+      </p>
+    </div>
   );
 }

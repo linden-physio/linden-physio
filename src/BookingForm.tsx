@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +23,8 @@ export function BookingForm({ date, picked, service }: { date: string; picked: s
   const [formState, setFormState] = useState<FormState>({ kind: "editing" });
   // The booking being checked in the dialog, or null when the dialog is closed.
   const [checking, setChecking] = useState<Details | null>(null);
+  // The confirmed booking, kept until the dialog has closed.
+  const confirmed = useRef<Details | null>(null);
 
   function book(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,8 +40,15 @@ export function BookingForm({ date, picked, service }: { date: string; picked: s
   }
 
   function confirm() {
-    if (checking) setFormState({ kind: "ready", ...checking });
+    confirmed.current = checking;
     setChecking(null);
+  }
+
+  // While the dialog is open, the rest of the page is hidden from screen readers, so a message
+  // set then is never read. Show it once the dialog has closed.
+  function closed() {
+    if (confirmed.current) setFormState({ kind: "ready", ...confirmed.current });
+    confirmed.current = null;
   }
 
   return (
@@ -51,7 +60,11 @@ export function BookingForm({ date, picked, service }: { date: string; picked: s
       <Button type="submit" className="book w-full sm:w-auto sm:self-start">
         Book
       </Button>
-      <Dialog open={checking !== null} onOpenChange={(open) => !open && setChecking(null)}>
+      <Dialog
+        open={checking !== null}
+        onOpenChange={(open) => !open && setChecking(null)}
+        onOpenChangeComplete={(open) => !open && closed()}
+      >
         <DialogContent className="p-6 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-2xl font-semibold">Check your booking</DialogTitle>
