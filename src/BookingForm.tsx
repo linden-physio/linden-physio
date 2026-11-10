@@ -31,6 +31,7 @@ export function BookingForm({
   picked: string | null;
   service: string;
   serviceId: string;
+  // Called when the free times have changed: after a booking, or when someone else got there first.
   onBooked: () => void;
 }) {
   const [formState, setFormState] = useState<FormState>({ kind: "editing" });
@@ -69,6 +70,9 @@ export function BookingForm({
     const response = await postBooking({ ...details, service: serviceId });
     if (response.ok) {
       setFormState({ kind: "booked", name: details.name, date: details.date, time: details.time });
+      onBooked();
+    } else if (response.status === 409) {
+      setFormState({ kind: "failed", message: "Someone just booked that time. Please pick another." });
       onBooked();
     } else {
       setFormState({ kind: "failed", message: "We couldn't take your booking. Please try again." });
