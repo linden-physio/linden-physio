@@ -19,11 +19,9 @@ const hours: Record<number, OpeningHours> = {
   6: "closed",
 };
 
-// Times already booked.
-const bookings: Booking[] = [
-  { date: "2026-11-10", start: "09:00", end: "10:00" },
-  { date: "2026-11-11", start: "11:00", end: "12:00" },
-];
+// Times already booked, from a file the server sends.
+const response = await fetch("/bookings.json");
+const bookings: Booking[] = await response.json();
 
 // The whole booking section, described from the state.
 function BookingSection() {
