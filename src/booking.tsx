@@ -9,6 +9,7 @@ import { Summary } from "./Summary";
 import { BookingForm } from "./BookingForm";
 import { NextFree } from "./NextFree";
 import { useChoice } from "./store";
+import { DatabaseStatus } from "./DatabaseStatus";
 import { z } from "zod";
 import { useFreeTimes } from "./useFreeTimes";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ function App() {
         <NextFree />
       </header>
       <BookingSection />
+      <DatabaseStatus />
     </>
   );
 }
