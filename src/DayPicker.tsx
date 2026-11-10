@@ -17,7 +17,7 @@ function weekOf(date: string): string[] {
 export function DayPicker({ date, onChange }: { date: string; onChange: (date: string) => void }) {
   return (
     <div className="flex items-center gap-1 sm:gap-2">
-      <Button variant="outline" size="icon" onClick={() => onChange(addDays(date, -7))}>
+      <Button variant="outline" size="icon" aria-label="Previous week" onClick={() => onChange(addDays(date, -7))}>
         <ChevronLeft />
       </Button>
       <div id="day" className="grid flex-1 grid-cols-7 gap-1 sm:gap-2">
@@ -25,7 +25,7 @@ export function DayPicker({ date, onChange }: { date: string; onChange: (date: s
           <DayPill key={day} day={day} picked={day === date} onPick={() => onChange(day)} />
         ))}
       </div>
-      <Button variant="outline" size="icon" onClick={() => onChange(addDays(date, 7))}>
+      <Button variant="outline" size="icon" aria-label="Next week" onClick={() => onChange(addDays(date, 7))}>
         <ChevronRight />
       </Button>
     </div>
@@ -38,6 +38,7 @@ function DayPill({ day, picked, onPick }: { day: string; picked: boolean; onPick
     <button
       type="button"
       aria-pressed={picked}
+      aria-label={d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
       onClick={onPick}
       className={
         "flex flex-col items-center rounded-full border py-2 text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 sm:text-sm " +
