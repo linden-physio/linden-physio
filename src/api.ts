@@ -1,8 +1,10 @@
 import { z } from "zod";
 import type { components } from "./api-types";
 
-// The clinic's server. It works out the free times and takes bookings.
-const api = "http://localhost:3000";
+// The clinic's server. It works out the free times and takes bookings. Its address differs between
+// this computer and production, so it comes from .env.development or .env.production. Vite writes
+// every VITE_ variable into the JavaScript that visitors download, so only public values go there.
+const api = import.meta.env.VITE_API_URL;
 
 // What the server sends for a day's free times, checked when it arrives. Each free time is an
 // instant, like "2026-11-10T08:00:00.000Z". Strict objects, so that a field we don't expect is an

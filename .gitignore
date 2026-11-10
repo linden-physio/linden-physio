@@ -1,2 +1,4 @@
 node_modules/
 dist/
+# Settings for this computer only. Never committed.
+*.local
