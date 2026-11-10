@@ -26,6 +26,14 @@ function messageFor(formState: FormState): string {
   }
 }
 
+// Full class names, so that Tailwind finds them when it reads this file.
+const messageColour: Record<FormState["kind"], string> = {
+  editing: "",
+  invalid: "bg-invalid-100 text-danger-600",
+  ready: "bg-ready-100",
+  sending: "bg-sending-100",
+};
+
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -66,7 +74,7 @@ export function BookingForm({ date, picked }: { date: string; picked: string | n
       <Button type="submit" className="book self-start">
         Book
       </Button>
-      <p id="message" role="status" className={`rounded-md px-4 py-3 break-words empty:hidden bg-${formState.kind}-100`}>
+      <p id="message" role="status" className={"rounded-md px-4 py-3 break-words empty:hidden " + messageColour[formState.kind]}>
         {messageFor(formState)}
       </p>
     </form>
