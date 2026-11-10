@@ -1,10 +1,13 @@
 import { useFreeTimes } from "./useFreeTimes";
+import { useChoice } from "./store";
 import { clockTime } from "./clockTime";
 import { dayName } from "./dayName";
 
 // "Next free: Tuesday 10:00", for the day and service on screen. It asks the same question as the
 // list of free times, so the cache answers both with one request.
-export function NextFree({ date, serviceId }: { date: string; serviceId: string }) {
+export function NextFree() {
+  const date = useChoice((choice) => choice.date);
+  const serviceId = useChoice((choice) => choice.serviceId);
   const free = useFreeTimes(date, serviceId);
   if (!free.isSuccess) return null;
   const first = free.data.times[0];
