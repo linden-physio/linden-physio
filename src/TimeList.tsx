@@ -19,7 +19,10 @@ export function TimeList({
 }) {
   if (closed) {
     return (
-      <div id="count" className="flex h-12 items-center gap-3 overflow-hidden rounded-md bg-muted-100 px-4 whitespace-nowrap">
+      <div
+        id="count"
+        className="flex h-12 items-center gap-3 overflow-hidden rounded-md bg-muted-100 px-4 whitespace-nowrap"
+      >
         <CalendarX className="size-5 shrink-0 text-ink-600" />
         <span>
           We're closed on {dayName(date)}s.

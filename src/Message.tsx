@@ -31,7 +31,11 @@ const messageColour: Record<FormState["kind"], string> = {
 
 export function Message({ formState }: { formState: FormState }) {
   return (
-    <p id="message" role="status" className={"rounded-md px-4 py-3 break-words empty:hidden " + messageColour[formState.kind]}>
+    <p
+      id="message"
+      role="status"
+      className={"rounded-md px-4 py-3 break-words empty:hidden " + messageColour[formState.kind]}
+    >
       {messageFor(formState)}
     </p>
   );

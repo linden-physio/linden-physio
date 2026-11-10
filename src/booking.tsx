@@ -65,7 +65,10 @@ function BookingSection() {
           <TimeList date={date} times={times} closed={closed} nearest={nearest} picked={picked} onPick={setPicked} />
         </div>
       </section>
-      <section aria-labelledby="details-heading" className="flex flex-col gap-4 rounded-md border border-line-200 bg-surface p-6">
+      <section
+        aria-labelledby="details-heading"
+        className="flex flex-col gap-4 rounded-md border border-line-200 bg-surface p-6"
+      >
         <h2 id="details-heading" className="text-title">
           Your booking
         </h2>

@@ -40,7 +40,7 @@ function DayPill({ day, picked, onPick }: { day: string; picked: boolean; onPick
       aria-pressed={picked}
       onClick={onPick}
       className={
-        "flex flex-col items-center rounded-full border py-2 text-xs sm:text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 " +
+        "flex flex-col items-center rounded-full border py-2 text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 sm:text-sm " +
         (picked ? "border-brand-600 bg-brand-600 text-white" : "border-line-200 bg-surface")
       }
     >

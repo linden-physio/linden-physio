@@ -23,9 +23,7 @@ export function ServiceCards({ length, onChange }: { length: number; onChange: (
 
 function ServiceCard({ service }: { service: (typeof services)[number] }) {
   return (
-    <label
-      className="flex cursor-pointer gap-3 rounded-md border border-line-200 bg-surface p-4 has-data-checked:border-2 has-data-checked:border-brand-600 has-data-checked:p-[15px]"
-    >
+    <label className="flex cursor-pointer gap-3 rounded-md border border-line-200 bg-surface p-4 has-data-checked:border-2 has-data-checked:border-brand-600 has-data-checked:p-[15px]">
       <RadioGroupItem value={service.length} className="mt-1" />
       <span>
         <span className="block font-semibold">{service.title}</span>
