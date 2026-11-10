@@ -8,14 +8,15 @@ import { TimeList } from "./TimeList";
 import { Summary } from "./Summary";
 import { BookingForm } from "./BookingForm";
 
-// The clinic's opening hours, by weekday (0 is Sunday), and the times already booked.
-// Both come from files the server sends. Ask for both at once, and wait for both.
-const [hoursResponse, bookingsResponse] = await Promise.all([fetch("/hours.json"), fetch("/bookings.json")]);
-const hours: Record<number, OpeningHours> = await hoursResponse.json();
-const bookings: Booking[] = await bookingsResponse.json();
+// Ask the server for a file and read it as JSON. A 404 or a 500 is still an answer, so check it.
+async function getJSON(path: string) {
+  const response = await fetch(path);
+  if (!response.ok) throw new Error(path + " answered " + response.status);
+  return response.json();
+}
 
 // The whole booking section, described from the state.
-function BookingSection() {
+function BookingSection({ hours, bookings }: { hours: Record<number, OpeningHours>; bookings: Booking[] }) {
   const [date, setDate] = useState("2026-11-10");
   const [picked, setPicked] = useState<string | null>(null);
   const [length, setLength] = useState(60);
@@ -68,4 +69,16 @@ function BookingSection() {
   );
 }
 
-createRoot(document.querySelector("#booking")!).render(<BookingSection />);
+const root = createRoot(document.querySelector("#booking")!);
+try {
+  // The clinic's opening hours, by weekday (0 is Sunday), and the times already booked.
+  // Ask for both at once, and wait for both.
+  const [hours, bookings] = await Promise.all([getJSON("/hours.json"), getJSON("/bookings.json")]);
+  root.render(<BookingSection hours={hours} bookings={bookings} />);
+} catch {
+  root.render(
+    <p role="alert" className="rounded-md bg-invalid-100 px-4 py-3 text-danger-600">
+      We couldn't load the free times. Please try again in a minute, or email us.
+    </p>,
+  );
+}
