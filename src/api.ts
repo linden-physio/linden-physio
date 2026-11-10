@@ -8,8 +8,8 @@ const api = "http://localhost:3000";
 // error too: it usually means the server changed.
 const FreeTimes = z.strictObject({
   closed: z.boolean(),
-  times: z.array(z.strictObject({ start: z.iso.datetime() })),
-  nearest: z.strictObject({ date: z.iso.date(), start: z.iso.datetime() }).nullable(),
+  times: z.array(z.strictObject({ startsAt: z.iso.datetime() })),
+  nearest: z.strictObject({ date: z.iso.date(), startsAt: z.iso.datetime() }).nullable(),
 });
 export type FreeTimes = z.infer<typeof FreeTimes>;
 
