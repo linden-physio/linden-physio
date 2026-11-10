@@ -70,7 +70,7 @@ function BookingSection() {
           Your booking
         </h2>
         <Summary date={date} picked={picked} service={service.name} />
-        <BookingForm date={date} picked={picked} />
+        <BookingForm date={date} picked={picked} service={service.name} />
       </section>
     </div>
   );
