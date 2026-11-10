@@ -22,10 +22,7 @@ export function TimeList({
       {/* A status is read out politely whenever its text changes, for example when the day changes. */}
       <div role="status">
         {closed ? (
-          <div
-            id="count"
-            className="flex h-12 items-center gap-3 overflow-hidden rounded-md bg-muted-100 px-4 whitespace-nowrap"
-          >
+          <div id="count" className="flex items-center gap-3 overflow-hidden rounded-md bg-muted-100 px-4 py-3">
             <CalendarX className="size-5 shrink-0 text-ink-600" />
             <span>
               We're closed on {dayName(date)}s.
