@@ -9,10 +9,9 @@ import { Summary } from "./Summary";
 import { BookingForm } from "./BookingForm";
 
 // The clinic's opening hours, by weekday (0 is Sunday), and the times already booked.
-// Both come from files the server sends.
-const hoursResponse = await fetch("/hours.json");
+// Both come from files the server sends. Ask for both at once, and wait for both.
+const [hoursResponse, bookingsResponse] = await Promise.all([fetch("/hours.json"), fetch("/bookings.json")]);
 const hours: Record<number, OpeningHours> = await hoursResponse.json();
-const bookingsResponse = await fetch("/bookings.json");
 const bookings: Booking[] = await bookingsResponse.json();
 
 // The whole booking section, described from the state.
