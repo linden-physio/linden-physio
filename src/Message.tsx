@@ -1,4 +1,5 @@
 import { dayName } from "./dayName";
+import { clockTime } from "./clockTime";
 
 export type FormState =
   | { kind: "editing" }
@@ -16,7 +17,7 @@ function messageFor(formState: FormState): string {
     case "sending":
       return "Sending your booking…";
     case "booked":
-      return "Booked: " + dayName(formState.date) + " " + formState.time + " for " + formState.name + ".";
+      return "Booked: " + dayName(formState.date) + " " + clockTime(formState.time) + " for " + formState.name + ".";
     case "failed":
       return formState.message;
     default: {

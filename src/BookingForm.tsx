@@ -13,6 +13,7 @@ import { dayName } from "./dayName";
 import { Field } from "./Field";
 import { Message, type FormState } from "./Message";
 import { postBooking } from "./api";
+import { clockTime } from "./clockTime";
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -67,7 +68,12 @@ export function BookingForm({
 
   async function send(details: Details) {
     setFormState({ kind: "sending" });
-    const response = await postBooking({ ...details, service: serviceId });
+    const response = await postBooking({
+      start: details.time,
+      service: serviceId,
+      name: details.name,
+      email: details.email,
+    });
     if (response.ok) {
       setFormState({ kind: "booked", name: details.name, date: details.date, time: details.time });
       onBooked();
@@ -97,7 +103,7 @@ export function BookingForm({
           <DialogHeader>
             <DialogTitle className="text-2xl font-semibold">Check your booking</DialogTitle>
             <DialogDescription className="text-base">
-              {checking && dayName(checking.date) + " " + checking.time + ", " + service}
+              {checking && dayName(checking.date) + " " + clockTime(checking.time) + ", " + service}
             </DialogDescription>
           </DialogHeader>
           {checking && (

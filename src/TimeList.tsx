@@ -1,6 +1,7 @@
 import { CalendarX } from "lucide-react";
 import { dayName } from "./dayName";
 import { TimeChip } from "./TimeChip";
+import { clockTime } from "./clockTime";
 
 export function TimeList({
   date,
@@ -11,9 +12,9 @@ export function TimeList({
   onPick,
 }: {
   date: string;
-  times: string[];
+  times: { start: string }[];
   closed: boolean;
-  nearest: { date: string; time: string } | null;
+  nearest: { date: string; start: string } | null;
   picked: string | null;
   onPick: (time: string) => void;
 }) {
@@ -26,7 +27,7 @@ export function TimeList({
             <CalendarX className="size-5 shrink-0 text-ink-600" />
             <span>
               We're closed on {dayName(date)}s.
-              {nearest && " The nearest free time is " + dayName(nearest.date) + " " + nearest.time + "."}
+              {nearest && " The nearest free time is " + dayName(nearest.date) + " " + clockTime(nearest.start) + "."}
             </span>
           </div>
         ) : (
@@ -38,8 +39,8 @@ export function TimeList({
       {!closed && (
         <fieldset id="free-times" className="mt-3 flex flex-wrap gap-2">
           <legend className="sr-only">Pick a time</legend>
-          {times.map((time) => (
-            <TimeChip key={time} time={time} picked={time === picked} onPick={() => onPick(time)} />
+          {times.map(({ start }) => (
+            <TimeChip key={start} time={start} picked={start === picked} onPick={() => onPick(start)} />
           ))}
         </fieldset>
       )}
