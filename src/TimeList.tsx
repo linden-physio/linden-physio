@@ -1,5 +1,6 @@
 import { CalendarX } from "lucide-react";
 import { dayName } from "./dayName";
+import { TimeChip } from "./TimeChip";
 
 export function TimeList({
   date,
@@ -34,16 +35,7 @@ export function TimeList({
       </p>
       <div id="free-times" className="mt-3 flex flex-wrap gap-2">
         {times.map((time) => (
-          <div
-            key={time}
-            className={
-              "flex h-10 cursor-pointer items-center rounded-full border px-4 " +
-              (time === picked ? "border-brand-600 bg-brand-600 text-white" : "border-line-200 bg-surface")
-            }
-            onClick={() => onPick(time)}
-          >
-            {time}
-          </div>
+          <TimeChip key={time} time={time} picked={time === picked} onPick={() => onPick(time)} />
         ))}
       </div>
     </>

@@ -1,7 +1,5 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogClose,
@@ -12,37 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { dayName } from "./dayName";
-
-type FormState =
-  | { kind: "editing" }
-  | { kind: "invalid"; message: string }
-  | { kind: "ready"; name: string; email: string; date: string; time: string }
-  | { kind: "sending" };
-
-function messageFor(formState: FormState): string {
-  switch (formState.kind) {
-    case "editing":
-      return "";
-    case "invalid":
-      return formState.message;
-    case "ready":
-      return "Ready to book " + formState.time + " for " + formState.name + ".";
-    case "sending":
-      return "Sending your booking…";
-    default: {
-      const unhandled: never = formState;
-      throw new Error("Unhandled form state: " + JSON.stringify(unhandled));
-    }
-  }
-}
-
-// Full class names, so that Tailwind finds them when it reads this file.
-const messageColour: Record<FormState["kind"], string> = {
-  editing: "",
-  invalid: "bg-invalid-100 text-danger-600",
-  ready: "bg-ready-100",
-  sending: "bg-sending-100",
-};
+import { Field } from "./Field";
+import { Message, type FormState } from "./Message";
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -76,14 +45,8 @@ export function BookingForm({ date, picked, service }: { date: string; picked: s
   return (
     <form id="details" onSubmit={book} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="name">Your name</Label>
-          <Input id="name" name="name" required autoComplete="name" className="h-10 rounded-sm bg-surface" />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" required autoComplete="email" className="h-10 rounded-sm bg-surface" />
-        </div>
+        <Field label="Your name" id="name" name="name" required autoComplete="name" />
+        <Field label="Email" id="email" name="email" type="email" required autoComplete="email" />
       </div>
       <Button type="submit" className="book w-full sm:w-auto sm:self-start">
         Book
@@ -107,9 +70,7 @@ export function BookingForm({ date, picked, service }: { date: string; picked: s
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <p id="message" role="status" className={"rounded-md px-4 py-3 break-words empty:hidden " + messageColour[formState.kind]}>
-        {messageFor(formState)}
-      </p>
+      <Message formState={formState} />
     </form>
   );
 }
