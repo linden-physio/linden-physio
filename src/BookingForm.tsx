@@ -1,4 +1,7 @@
 import { useState, type FormEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type FormState =
   | { kind: "editing" }
@@ -49,15 +52,21 @@ export function BookingForm({ date, picked }: { date: string; picked: string | n
   }
 
   return (
-    <form id="details" onSubmit={book}>
-      <label>
-        Your name <input name="name" required autoComplete="name" />
-      </label>
-      <label>
-        Email <input name="email" type="email" required autoComplete="email" />
-      </label>
-      <button className="book">Book</button>
-      <p id="message" role="status">
+    <form id="details" onSubmit={book} className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="name">Your name</Label>
+          <Input id="name" name="name" required autoComplete="name" className="h-10 rounded-sm bg-surface" />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" name="email" type="email" required autoComplete="email" className="h-10 rounded-sm bg-surface" />
+        </div>
+      </div>
+      <Button type="submit" className="book self-start">
+        Book
+      </Button>
+      <p id="message" role="status" className="rounded-md px-4 py-3 break-words empty:hidden">
         {messageFor(formState)}
       </p>
     </form>
