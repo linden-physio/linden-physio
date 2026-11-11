@@ -20,7 +20,7 @@ function toRange(start: string, end: string): Range {
 }
 
 function overlaps(a: Range, b: Range): boolean {
-  return a.start <= b.end && b.start <= a.end;
+  return a.start < b.end && b.start < a.end;
 }
 
 // Free start times on one day, for a visit of the given length.
