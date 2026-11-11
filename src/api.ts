@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { components } from "./api-types";
 
 // The clinic's server. It works out the free times and takes bookings.
 const api = "http://localhost:3000";
@@ -24,7 +25,8 @@ export async function getFreeTimes(date: string, service: string): Promise<FreeT
   return FreeTimes.parse(await getJSON("/free-times?date=" + date + "&service=" + service));
 }
 
-export type NewBooking = { start: string; service: string; name: string; email: string };
+// The types the contract describes, generated from the server's openapi.yaml (npm run api-types).
+export type NewBooking = components["schemas"]["NewBooking"];
 
 // Send a booking. The server answers 201 when it has taken it.
 export function postBooking(booking: NewBooking): Promise<Response> {
