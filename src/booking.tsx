@@ -9,6 +9,12 @@ import { BookingForm } from "./BookingForm";
 import { z } from "zod";
 import { getFreeTimes, type FreeTimes } from "./api";
 
+// npm run dev:mock answers the requests the server can't answer yet in the browser, from the contract.
+if (import.meta.env.VITE_MOCK_API === "on") {
+  const { worker } = await import("./mocks/browser");
+  await worker.start({ onUnhandledFrame: "bypass" });
+}
+
 // The whole booking section, described from the state.
 function BookingSection({ first }: { first: FreeTimes }) {
   const [date, setDate] = useState("2026-11-10");

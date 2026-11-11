@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "VITE_MOCK_API=on vite",
     "build": "tsc --noEmit && vite build",
     "test": "node --test",
     "format": "prettier --write .",
@@ -25,6 +26,7 @@
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.14.0",
+    "msw": "3.0.5",
     "openapi-typescript": "7.13.0",
     "prettier": "3.9.10",
     "prettier-plugin-tailwindcss": "0.8.1",
@@ -52,5 +54,10 @@
     "openapi-typescript": {
       "typescript": "$typescript"
     }
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }
