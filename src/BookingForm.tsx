@@ -12,7 +12,8 @@ import {
 import { dayName } from "./dayName";
 import { Field } from "./Field";
 import { Message, type FormState } from "./Message";
-import { postBooking } from "./api";
+import { cancelBooking, postBooking, type Booking } from "./api";
+import { afterCancel } from "./cancelling";
 import { clockTime } from "./clockTime";
 
 function today(): string {
@@ -75,13 +76,26 @@ export function BookingForm({
       email: details.email,
     });
     if (response.ok) {
-      setFormState({ kind: "booked", name: details.name, date: details.date, time: details.time });
+      const made: Booking = await response.json();
+      setFormState({ kind: "booked", id: made.id, name: details.name, date: details.date, time: details.time });
       onBooked();
     } else if (response.status === 409) {
       setFormState({ kind: "failed", message: "Someone just booked that time. Please pick another." });
       onBooked();
     } else {
       setFormState({ kind: "failed", message: "We couldn't take your booking. Please try again." });
+    }
+  }
+
+  async function cancel(booked: { id: string; date: string; time: string }) {
+    setFormState({ kind: "cancelling" });
+    try {
+      const response = await cancelBooking(booked.id);
+      setFormState(afterCancel(response.status, booked));
+      onBooked();
+    } catch {
+      // No answer at all: the network or the server is down.
+      setFormState(afterCancel(0, booked));
     }
   }
 
@@ -118,6 +132,11 @@ export function BookingForm({
         </DialogContent>
       </Dialog>
       <Message formState={formState} />
+      {formState.kind === "booked" && (
+        <Button type="button" variant="outline" className="sm:self-start" onClick={() => cancel(formState)}>
+          Cancel this booking
+        </Button>
+      )}
     </form>
   );
 }

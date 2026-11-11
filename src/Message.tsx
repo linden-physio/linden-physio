@@ -5,7 +5,9 @@ export type FormState =
   | { kind: "editing" }
   | { kind: "invalid"; message: string }
   | { kind: "sending" }
-  | { kind: "booked"; name: string; date: string; time: string }
+  | { kind: "booked"; id: string; name: string; date: string; time: string }
+  | { kind: "cancelling" }
+  | { kind: "cancelled"; date: string; time: string }
   | { kind: "failed"; message: string };
 
 function messageFor(formState: FormState): string {
@@ -18,6 +20,10 @@ function messageFor(formState: FormState): string {
       return "Sending your booking…";
     case "booked":
       return "Booked: " + dayName(formState.date) + " " + clockTime(formState.time) + " for " + formState.name + ".";
+    case "cancelling":
+      return "Cancelling your booking…";
+    case "cancelled":
+      return "Cancelled: " + dayName(formState.date) + " " + clockTime(formState.time) + ". The time is free again.";
     case "failed":
       return formState.message;
     default: {
@@ -33,6 +39,8 @@ const messageColour: Record<FormState["kind"], string> = {
   invalid: "bg-invalid-100 text-danger-600",
   sending: "bg-sending-100",
   booked: "bg-ready-100",
+  cancelling: "bg-sending-100",
+  cancelled: "bg-ready-100",
   failed: "bg-invalid-100 text-danger-600",
 };
 

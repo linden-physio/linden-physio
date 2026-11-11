@@ -27,12 +27,18 @@ export async function getFreeTimes(date: string, service: string): Promise<FreeT
 
 // The types the contract describes, generated from the server's openapi.yaml (npm run api-types).
 export type NewBooking = components["schemas"]["NewBooking"];
+export type Booking = components["schemas"]["Booking"];
 
-// Send a booking. The server answers 201 when it has taken it.
+// Send a booking. The server answers 201 and the booking's id when it has taken it.
 export function postBooking(booking: NewBooking): Promise<Response> {
   return fetch(api + "/bookings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(booking),
   });
+}
+
+// Cancel a booking. The server answers 204 when it's cancelled (the contract lists the other answers).
+export function cancelBooking(id: string): Promise<Response> {
+  return fetch(api + "/bookings/" + id, { method: "DELETE" });
 }
