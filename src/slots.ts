@@ -35,3 +35,20 @@ export function freeTimes(
   }
   return times;
 }
+
+// The first free time after the given day, looking up to two weeks ahead.
+export function nearestFreeTime(
+  date: string,
+  length: number,
+  hours: Record<number, OpeningHours>,
+  bookings: Booking[],
+): { date: string; time: string } | null {
+  const day = new Date(date + "T12:00");
+  for (let i = 1; i <= 14; i++) {
+    day.setDate(day.getDate() + 1);
+    const next = day.toISOString().slice(0, 10);
+    const times = freeTimes(next, length, hours, bookings);
+    if (times.length > 0) return { date: next, time: times[0] };
+  }
+  return null;
+}
