@@ -1,5 +1,6 @@
+"use client";
+
 import { useRef, useState, type FormEvent } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,29 +29,16 @@ export function BookingForm({
   picked,
   service,
   serviceId,
-  onBooked,
+  onChanged,
 }: {
   date: string;
   picked: string | null;
   service: string;
   serviceId: string;
-  // Called when the free times have changed: after a booking, or when someone else got there first.
-  onBooked: () => void;
+  // Called when the free times have changed: after a booking or a cancel, or when someone else got there first.
+  onChanged: () => void;
 }) {
   const [formState, setFormState] = useState<FormState>({ kind: "editing" });
-  const queryClient = useQueryClient();
-  // Sending a booking changes what's on the server. Whatever the answer, mark the day's free times as
-  // old, for every service, so that every component showing them asks again.
-  const booking = useMutation({
-    mutationFn: postBooking,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["free-times", date] }),
-  });
-  // Cancelling changes the server too. The booking may be on another day than the one on screen, so
-  // mark every day's free times as old.
-  const cancelling = useMutation({
-    mutationFn: cancelBooking,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["free-times"] }),
-  });
   // The booking being checked in the dialog, or null when the dialog is closed.
   const [checking, setChecking] = useState<Details | null>(null);
   // The confirmed booking, kept until the dialog has closed.
@@ -83,7 +71,7 @@ export function BookingForm({
 
   async function send(details: Details) {
     setFormState({ kind: "sending" });
-    const response = await booking.mutateAsync({
+    const response = await postBooking({
       start: details.time,
       service: serviceId,
       name: details.name,
@@ -92,10 +80,10 @@ export function BookingForm({
     if (response.ok) {
       const made: Booking = await response.json();
       setFormState({ kind: "booked", id: made.id, name: details.name, date: details.date, time: details.time });
-      onBooked();
+      onChanged();
     } else if (response.status === 409) {
       setFormState({ kind: "failed", message: "Someone just booked that time. Please pick another." });
-      onBooked();
+      onChanged();
     } else {
       setFormState({ kind: "failed", message: "We couldn't take your booking. Please try again." });
     }
@@ -104,8 +92,9 @@ export function BookingForm({
   async function cancel(booked: { id: string; date: string; time: string }) {
     setFormState({ kind: "cancelling" });
     try {
-      const response = await cancelling.mutateAsync(booked.id);
+      const response = await cancelBooking(booked.id);
       setFormState(afterCancel(response.status, booked));
+      if (response.ok) onChanged();
     } catch {
       // No answer at all: the network or the server is down.
       setFormState(afterCancel(0, booked));

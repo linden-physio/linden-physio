@@ -1,6 +1,51 @@
-import { ClientOnly } from "./client";
+import { z } from "zod";
+import { getFreeTimes } from "../api";
+import { services } from "../services";
+import { NextFree } from "../NextFree";
+import { ServiceCards } from "../ServiceCards";
+import { DayPicker } from "../DayPicker";
+import { Booking } from "../Booking";
 
-// The page at /. A folder under app/ with a page.tsx in it would be a page at that folder's path.
-export default function Page() {
-  return <ClientOnly />;
+// What the address asks for, like /?day=2026-11-17&service=follow-up. Anyone can type anything there,
+// so check it, and fall back to the first day and service when it doesn't fit.
+const Choice = z.object({
+  day: z.iso.date().catch("2026-11-10"),
+  service: z
+    .string()
+    .refine((id) => services.some((s) => s.id === id))
+    .catch("first-visit"),
+});
+
+// The page at /. It runs on the server: it reads the day and the service from the address, asks the
+// clinic's server for that day's free times, and only then sends the page, with the times in it.
+export default async function Page({ searchParams }: PageProps<"/">) {
+  const { day, service } = Choice.parse(await searchParams);
+  const free = await getFreeTimes(day, service).catch((error) => {
+    console.error(error);
+    return null;
+  });
+
+  return (
+    <>
+      <header className="mb-12 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-display">Linden Physio</h1>
+          <p className="mt-2 text-ink-600">Physiotherapy in the middle of town. Book a time that suits you.</p>
+        </div>
+        {free && <NextFree date={day} free={free} />}
+      </header>
+      <div className="flex flex-col gap-8">
+        <section aria-labelledby="service-heading">
+          <h2 id="service-heading" className="mb-4 text-title">
+            Choose a service
+          </h2>
+          <ServiceCards day={day} service={service} />
+        </section>
+        {/* A new day or service is a new Booking, so the time picked for the old one is gone. */}
+        <Booking key={day + service} date={day} serviceId={service} free={free}>
+          <DayPicker date={day} service={service} />
+        </Booking>
+      </div>
+    </>
+  );
 }

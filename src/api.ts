@@ -2,8 +2,9 @@ import { z } from "zod";
 import type { components } from "./api-types";
 
 // The clinic's server. It works out the free times and takes bookings. Its address differs between
-// this computer and production, so it comes from .env.development or .env.production. Next.js writes
-// every NEXT_PUBLIC_ variable into the JavaScript that visitors download, so only public values go there.
+// this computer and production, so it comes from .env.development or .env.production. The page asks it
+// for the free times from our server, and the browser sends it bookings, so the browser needs the
+// address too: Next.js writes every NEXT_PUBLIC_ variable into the JavaScript that visitors download.
 const api = process.env.NEXT_PUBLIC_API_URL;
 
 // What the server sends for a day's free times, checked when it arrives. Each free time is an

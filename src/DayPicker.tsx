@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 function addDays(date: string, days: number): string {
   const d = new Date(date + "T12:00");
@@ -14,32 +15,36 @@ function weekOf(date: string): string[] {
   return [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(monday, i));
 }
 
-export function DayPicker({ date, onChange }: { date: string; onChange: (date: string) => void }) {
+// Each day is a link to the page for that day. The server makes the links, and they need no JavaScript.
+export function DayPicker({ date, service }: { date: string; service: string }) {
+  const href = (day: string) => "/?day=" + day + "&service=" + service;
+  const arrow = buttonVariants({ variant: "outline", size: "icon" });
   return (
-    <div className="flex items-center gap-1 sm:gap-2">
-      <Button variant="outline" size="icon" aria-label="Previous week" onClick={() => onChange(addDays(date, -7))}>
+    <nav aria-label="Days" className="flex items-center gap-1 sm:gap-2">
+      <Link href={href(addDays(date, -7))} scroll={false} prefetch={false} aria-label="Previous week" className={arrow}>
         <ChevronLeft />
-      </Button>
+      </Link>
       <div id="day" className="grid flex-1 grid-cols-7 gap-1 sm:gap-2">
         {weekOf(date).map((day) => (
-          <DayPill key={day} day={day} picked={day === date} onPick={() => onChange(day)} />
+          <DayPill key={day} day={day} picked={day === date} href={href(day)} />
         ))}
       </div>
-      <Button variant="outline" size="icon" aria-label="Next week" onClick={() => onChange(addDays(date, 7))}>
+      <Link href={href(addDays(date, 7))} scroll={false} prefetch={false} aria-label="Next week" className={arrow}>
         <ChevronRight />
-      </Button>
-    </div>
+      </Link>
+    </nav>
   );
 }
 
-function DayPill({ day, picked, onPick }: { day: string; picked: boolean; onPick: () => void }) {
+function DayPill({ day, picked, href }: { day: string; picked: boolean; href: string }) {
   const d = new Date(day + "T12:00");
   return (
-    <button
-      type="button"
-      aria-pressed={picked}
+    <Link
+      href={href}
+      scroll={false}
+      prefetch={false}
+      aria-current={picked ? "date" : undefined}
       aria-label={d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
-      onClick={onPick}
       className={
         "flex flex-col items-center rounded-full border py-2 text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 sm:text-sm " +
         (picked ? "border-brand-600 bg-brand-600 text-white" : "border-line-200 bg-surface")
@@ -47,6 +52,6 @@ function DayPill({ day, picked, onPick }: { day: string; picked: boolean; onPick
     >
       <span>{d.toLocaleDateString("en-GB", { weekday: "short" })}</span>
       <span className="font-semibold">{d.getDate()}</span>
-    </button>
+    </Link>
   );
 }

@@ -5,7 +5,7 @@ type NewBooking = components["schemas"]["NewBooking"];
 type Booking = components["schemas"]["Booking"];
 type Problem = components["schemas"]["Problem"];
 
-// A stand-in for the server, for the requests it can't answer yet. Each answer is one of the contract's
+// A stand-in for the server, for the tests. Each answer is one of the contract's
 // examples (the server's openapi.yaml), and the generated types check that it has the contract's shape.
 export const handlers = [
   // Booking: the server doesn't send an id back yet, so answer this here too.

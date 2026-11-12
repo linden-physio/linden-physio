@@ -6,7 +6,7 @@ import jsxA11y from "eslint-plugin-jsx-a11y";
 import globals from "globals";
 
 export default defineConfig([
-  globalIgnores(["dist", ".next", "next-env.d.ts", "public/mockServiceWorker.js"]),
+  globalIgnores(["dist", ".next", "next-env.d.ts"]),
   {
     files: ["**/*.{ts,tsx}"],
     extends: [
