@@ -1,6 +1,7 @@
 import { getFreeTimes } from "./clinic.js";
 import { services } from "./services.js";
 import { DayLinks } from "./DayLinks.jsx";
+import { Booking } from "./Booking.jsx";
 import { Times } from "./Times.jsx";
 
 // The page. A server component: it reads the day and the service from the address and asks the
@@ -14,10 +15,7 @@ export function Page({ search }) {
       <h1>Linden Physio</h1>
       <p className="lead">Physiotherapy in the middle of town.</p>
       <DayLinks day={day} service={service} />
-      <section>
-        <h2>Free times</h2>
-        <Times free={free} />
-      </section>
+      <Booking key={day + service} day={day} service={service} times={<Times free={free} />} />
     </main>
   );
 }
