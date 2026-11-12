@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 import { clinic } from "../../server/clinic.ts";
 import { services } from "../services";
@@ -23,10 +23,13 @@ const Choice = z.object({
 type Choice = z.infer<typeof Choice>;
 
 // A day's free times for a service, kept for an hour: every visit in that hour gets the same answer
-// without asking the database. The day and the service are the cache's key.
+// without asking the database. The day and the service are the cache's key. Every booking and cancel
+// forgets them all, by their tag: a closed day's answer names the nearest free time up to two weeks
+// ahead, so one booking can change the answers for other days too.
 async function cachedFreeTimes(day: string, service: string) {
   "use cache";
   cacheLife("hours");
+  cacheTag("free-times");
   return clinic().freeTimesOn(day, service);
 }
 

@@ -1,6 +1,6 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 import { z } from "zod";
 import { clinic } from "../server/clinic.ts";
 import { services } from "./services";
@@ -27,11 +27,14 @@ export async function book(previous: FormState, data: FormData): Promise<FormSta
   const { time, service, date, name, email } = fields.data;
   const booked = await clinic().book({ start: time, service, name, email });
   if (booked.kind === "taken") {
+    updateTag("free-times");
     refresh();
     return { kind: "failed", message: "Someone just booked that time. Please pick another." };
   }
   if (booked.kind !== "booked") return { kind: "failed", message: "We couldn't take your booking. Please try again." };
-  // The free times have changed: send the page's new free times back with the answer.
+  // The free times have changed: forget the kept ones, and send the page's new free times back with the
+  // answer. updateTag makes the next request wait for fresh times, so this answer has them.
+  updateTag("free-times");
   refresh();
   return { kind: "booked", id: booked.id, name, date, time: booked.startsAt };
 }
