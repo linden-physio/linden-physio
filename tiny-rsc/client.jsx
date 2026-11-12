@@ -65,3 +65,13 @@ async function load(address) {
 
 const root = createRoot(document.getElementById("root"));
 root.render(await load(location.href));
+
+// A click on a link to this page asks for just the payload for the new address.
+document.addEventListener("click", async (event) => {
+  const link = event.target.closest("a");
+  if (!link || link.origin !== location.origin) return;
+  event.preventDefault();
+  history.pushState(null, "", link.href);
+  root.render(await load(link.href));
+});
+addEventListener("popstate", async () => root.render(await load(location.href)));
