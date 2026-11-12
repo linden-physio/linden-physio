@@ -16,6 +16,8 @@ function weekOf(date: string): string[] {
 }
 
 // Each day is a link to the page for that day. The server makes the links, and they need no JavaScript.
+// Next.js fetches the page behind every link on screen ahead of time, in case it's clicked; for these
+// nine links that would ask the clinic's server for nine days of times on every visit, so they don't.
 export function DayPicker({ date, service }: { date: string; service: string }) {
   const href = (day: string) => "/?day=" + day + "&service=" + service;
   const arrow = buttonVariants({ variant: "outline", size: "icon" });
