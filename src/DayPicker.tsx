@@ -16,14 +16,14 @@ function weekOf(date: string): string[] {
 }
 
 // Each day is a link to the page for that day. The server makes the links, and they need no JavaScript.
-// Next.js fetches the page behind every link on screen ahead of time, in case it's clicked; for these
-// nine links that would ask the clinic's server for nine days of times on every visit, so they don't.
+// Links fetch ahead of time only the part of the page that doesn't depend on the address (partial
+// prefetching, in next.config.ts): one fetch for all nine, and no free times.
 export function DayPicker({ date, service }: { date: string; service: string }) {
   const href = (day: string) => "/?day=" + day + "&service=" + service;
   const arrow = buttonVariants({ variant: "outline", size: "icon" });
   return (
     <nav aria-label="Days" className="flex items-center gap-1 sm:gap-2">
-      <Link href={href(addDays(date, -7))} scroll={false} prefetch={false} aria-label="Previous week" className={arrow}>
+      <Link href={href(addDays(date, -7))} scroll={false} aria-label="Previous week" className={arrow}>
         <ChevronLeft />
       </Link>
       <div id="day" className="grid flex-1 grid-cols-7 gap-1 sm:gap-2">
@@ -31,7 +31,7 @@ export function DayPicker({ date, service }: { date: string; service: string }) 
           <DayPill key={day} day={day} picked={day === date} href={href(day)} />
         ))}
       </div>
-      <Link href={href(addDays(date, 7))} scroll={false} prefetch={false} aria-label="Next week" className={arrow}>
+      <Link href={href(addDays(date, 7))} scroll={false} aria-label="Next week" className={arrow}>
         <ChevronRight />
       </Link>
     </nav>
@@ -44,7 +44,7 @@ function DayPill({ day, picked, href }: { day: string; picked: boolean; href: st
     <Link
       href={href}
       scroll={false}
-      prefetch={false}
+
       aria-current={picked ? "date" : undefined}
       aria-label={d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
       className={
