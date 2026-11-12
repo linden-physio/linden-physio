@@ -1,0 +1,72 @@
+body {
+  margin: 0;
+  background: #f7f5f0;
+  color: #1f2a2e;
+  font:
+    18px/1.5 system-ui,
+    sans-serif;
+}
+main {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+h1 {
+  margin: 0;
+  font-size: 2.6rem;
+  letter-spacing: -0.02em;
+}
+h2 {
+  margin: 2rem 0 1rem;
+  font-size: 1.4rem;
+}
+.lead,
+.muted {
+  color: #5b676b;
+}
+.days {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+.days a {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d5d9d6;
+  color: inherit;
+  text-decoration: none;
+  background: #fff;
+}
+.days a[aria-current] {
+  background: #2f6f5e;
+  border-color: #2f6f5e;
+  color: #fff;
+}
+.times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.chip {
+  font: inherit;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  border: 1px solid #2f6f5e;
+  background: #fff;
+  color: #2f6f5e;
+  cursor: pointer;
+}
+.chip[aria-pressed="true"] {
+  background: #2f6f5e;
+  color: #fff;
+}
+.summary {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: #fff;
+  border: 1px solid #d5d9d6;
+}
