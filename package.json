@@ -6,6 +6,7 @@
     "dev": "next dev --port 5173",
     "dev:mock": "NEXT_PUBLIC_MOCK_API=on next dev --port 5173",
     "build": "next build",
+    "start": "next start --port 5173",
     "test": "node --test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
