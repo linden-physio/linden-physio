@@ -57,7 +57,14 @@ export function Booking({
           Your booking
         </h2>
         <Summary date={date} picked={picked} service={service.name} />
-        <BookingForm date={date} picked={picked} service={service.name} serviceId={serviceId} onChanged={changed} />
+        <BookingForm
+          date={date}
+          picked={picked}
+          service={service.name}
+          serviceId={serviceId}
+          onSending={() => setPicked(null)}
+          onChanged={changed}
+        />
       </section>
     </>
   );
