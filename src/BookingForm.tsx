@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +13,9 @@ import {
 import { dayName } from "./dayName";
 import { Field } from "./Field";
 import { Message, type FormState } from "./Message";
+import { cancelBooking, postBooking, type Booking } from "./api";
+import { afterCancel } from "./cancelling";
+import { clockTime } from "./clockTime";
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -19,8 +23,34 @@ function today(): string {
 
 type Details = { name: string; email: string; date: string; time: string };
 
-export function BookingForm({ date, picked, service }: { date: string; picked: string | null; service: string }) {
+export function BookingForm({
+  date,
+  picked,
+  service,
+  serviceId,
+  onBooked,
+}: {
+  date: string;
+  picked: string | null;
+  service: string;
+  serviceId: string;
+  // Called when the free times have changed: after a booking, or when someone else got there first.
+  onBooked: () => void;
+}) {
   const [formState, setFormState] = useState<FormState>({ kind: "editing" });
+  const queryClient = useQueryClient();
+  // Sending a booking changes what's on the server. Whatever the answer, mark the day's free times as
+  // old, for every service, so that every component showing them asks again.
+  const booking = useMutation({
+    mutationFn: postBooking,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["free-times", date] }),
+  });
+  // Cancelling changes the server too. The booking may be on another day than the one on screen, so
+  // mark every day's free times as old.
+  const cancelling = useMutation({
+    mutationFn: cancelBooking,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["free-times"] }),
+  });
   // The booking being checked in the dialog, or null when the dialog is closed.
   const [checking, setChecking] = useState<Details | null>(null);
   // The confirmed booking, kept until the dialog has closed.
@@ -45,10 +75,41 @@ export function BookingForm({ date, picked, service }: { date: string; picked: s
   }
 
   // While the dialog is open, the rest of the page is hidden from screen readers, so a message
-  // set then is never read. Show it once the dialog has closed.
+  // set then is never read. Send the booking once the dialog has closed.
   function closed() {
-    if (confirmed.current) setFormState({ kind: "ready", ...confirmed.current });
+    if (confirmed.current) send(confirmed.current);
     confirmed.current = null;
+  }
+
+  async function send(details: Details) {
+    setFormState({ kind: "sending" });
+    const response = await booking.mutateAsync({
+      start: details.time,
+      service: serviceId,
+      name: details.name,
+      email: details.email,
+    });
+    if (response.ok) {
+      const made: Booking = await response.json();
+      setFormState({ kind: "booked", id: made.id, name: details.name, date: details.date, time: details.time });
+      onBooked();
+    } else if (response.status === 409) {
+      setFormState({ kind: "failed", message: "Someone just booked that time. Please pick another." });
+      onBooked();
+    } else {
+      setFormState({ kind: "failed", message: "We couldn't take your booking. Please try again." });
+    }
+  }
+
+  async function cancel(booked: { id: string; date: string; time: string }) {
+    setFormState({ kind: "cancelling" });
+    try {
+      const response = await cancelling.mutateAsync(booked.id);
+      setFormState(afterCancel(response.status, booked));
+    } catch {
+      // No answer at all: the network or the server is down.
+      setFormState(afterCancel(0, booked));
+    }
   }
 
   return (
@@ -69,7 +130,7 @@ export function BookingForm({ date, picked, service }: { date: string; picked: s
           <DialogHeader>
             <DialogTitle className="text-2xl font-semibold">Check your booking</DialogTitle>
             <DialogDescription className="text-base">
-              {checking && dayName(checking.date) + " " + checking.time + ", " + service}
+              {checking && dayName(checking.date) + " " + clockTime(checking.time) + ", " + service}
             </DialogDescription>
           </DialogHeader>
           {checking && (
@@ -84,6 +145,11 @@ export function BookingForm({ date, picked, service }: { date: string; picked: s
         </DialogContent>
       </Dialog>
       <Message formState={formState} />
+      {formState.kind === "booked" && (
+        <Button type="button" variant="outline" className="sm:self-start" onClick={() => cancel(formState)}>
+          Cancel this booking
+        </Button>
+      )}
     </form>
   );
 }
