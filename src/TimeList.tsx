@@ -1,24 +1,24 @@
+"use client";
+
 import { CalendarX } from "lucide-react";
 import { dayName } from "./dayName";
 import { TimeChip } from "./TimeChip";
 import { clockTime } from "./clockTime";
 import type { FreeTimes } from "./api";
+import { usePicked } from "./Booking";
 
 export function TimeList({
   date,
   times,
   closed,
   nearest,
-  picked,
-  onPick,
 }: {
   date: string;
   times: FreeTimes["times"];
   closed: boolean;
   nearest: FreeTimes["nearest"];
-  picked: string | null;
-  onPick: (time: string) => void;
 }) {
+  const { picked, pick } = usePicked();
   return (
     <>
       {/* A status is read out politely whenever its text changes, for example when the day changes. */}
@@ -42,7 +42,7 @@ export function TimeList({
         <fieldset id="free-times" className="mt-3 flex flex-wrap gap-2">
           <legend className="sr-only">Pick a time</legend>
           {times.map(({ startsAt }) => (
-            <TimeChip key={startsAt} time={startsAt} picked={startsAt === picked} onPick={() => onPick(startsAt)} />
+            <TimeChip key={startsAt} time={startsAt} picked={startsAt === picked} onPick={() => pick(startsAt)} />
           ))}
         </fieldset>
       )}

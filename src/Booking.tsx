@@ -1,27 +1,31 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { createContext, use, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { TimeList } from "./TimeList";
 import { Summary } from "./Summary";
 import { BookingForm } from "./BookingForm";
 import { services } from "./services";
-import type { FreeTimes } from "./api";
+
+// The time the visitor picked, for the time chips deeper down, which the server makes.
+const Picked = createContext<{ picked: string | null; pick: (time: string) => void }>({
+  picked: null,
+  pick: () => {},
+});
+export const usePicked = () => use(Picked);
 
 // The parts of the page that change while the visitor uses it: the time they picked, and the booking.
-// They run in the browser. The free times arrive with the page, from the server; the day picker
-// (children) is made on the server too, and only passes through here.
+// They run in the browser. The day picker (days) and the free times (times) are made on the server and
+// only pass through here, so the server can wait for the times while the rest of the page is on screen.
 export function Booking({
   date,
   serviceId,
-  free,
-  children,
+  days,
+  times,
 }: {
   date: string;
   serviceId: string;
-  free: FreeTimes | null;
-  children: ReactNode;
+  days: ReactNode;
+  times: ReactNode;
 }) {
   const [picked, setPicked] = useState<string | null>(null);
   const router = useRouter();
@@ -40,25 +44,9 @@ export function Booking({
         <h2 id="time-heading" className="mb-4 text-title">
           Free times
         </h2>
-        {children}
+        {days}
         <div className="mt-6">
-          {free === null ? (
-            <div role="alert" className="flex items-center gap-4 rounded-md bg-invalid-100 px-4 py-3 text-danger-600">
-              We couldn't load the free times.
-              <Button variant="outline" onClick={() => router.refresh()}>
-                Try again
-              </Button>
-            </div>
-          ) : (
-            <TimeList
-              date={date}
-              times={free.times}
-              closed={free.closed}
-              nearest={free.nearest}
-              picked={picked}
-              onPick={setPicked}
-            />
-          )}
+          <Picked value={{ picked, pick: setPicked }}>{times}</Picked>
         </div>
       </section>
       <section
