@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getFreeTimes } from "./clinic.js";
 import { services } from "./services.js";
 import { DayLinks } from "./DayLinks.jsx";
@@ -15,7 +16,16 @@ export function Page({ search }) {
       <h1>Linden Physio</h1>
       <p className="lead">Physiotherapy in the middle of town.</p>
       <DayLinks day={day} service={service} />
-      <Booking key={day + service} day={day} service={service} times={<Times free={free} />} />
+      <Booking
+        key={day + service}
+        day={day}
+        service={service}
+        times={
+          <Suspense fallback={<p className="muted">Looking for free times…</p>}>
+            <Times free={free} />
+          </Suspense>
+        }
+      />
     </main>
   );
 }

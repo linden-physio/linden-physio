@@ -9,9 +9,9 @@ const page = `<!doctype html>
   <body><div id="root"></div><script type="module" src="/client.js"></script></body>
 </html>`;
 
-// The page's server. A request with the header RSC: 1 gets the payload; any other request gets an
-// empty page, whose script asks for the payload.
-createServer(async (request, response) => {
+// The page's server. A request with the header RSC: 1 gets the payload, written as it's made;
+// any other request gets an empty page, whose script asks for the payload.
+createServer((request, response) => {
   const url = new URL(request.url, "http://localhost");
   if (url.pathname === "/client.js" || url.pathname === "/style.css") {
     response.setHeader("Content-Type", url.pathname.endsWith(".js") ? "text/javascript" : "text/css");
@@ -19,8 +19,8 @@ createServer(async (request, response) => {
   }
   if (request.headers.rsc) {
     response.setHeader("Content-Type", "text/x-component");
-    await render(<Page search={url.searchParams} />, (line) => response.write(line));
-    return response.end();
+    render(<Page search={url.searchParams} />, (line) => response.write(line)).then(() => response.end());
+    return;
   }
   response.setHeader("Content-Type", "text/html");
   response.end(page);

@@ -1,15 +1,28 @@
-import { createElement } from "react";
+import { createElement, use } from "react";
 import { createRoot } from "react-dom/client";
 import { modules } from "client-modules";
 
-// Ask the page's server for the payload, keep each row by its id, and rebuild row 0.
+// Read a payload as it arrives, a line at a time, and keep each row by its id. A row that hasn't
+// arrived yet is a promise, which resolves when its line comes.
 async function load(address) {
   const rows = new Map();
+  const row = (id) => {
+    if (!rows.has(id)) {
+      let resolve;
+      const promise = new Promise((r) => (resolve = r));
+      rows.set(id, { promise, resolve });
+    }
+    return rows.get(id);
+  };
   const decode = (value) => {
     if (typeof value === "string") {
       if (value.startsWith("$$")) return value.slice(1);
       if (value.startsWith("$S")) return Symbol.for(value.slice(2));
-      if (value.startsWith("$L")) return rows.get(value.slice(2));
+      if (value.startsWith("$L")) {
+        const r = row(value.slice(2));
+        if ("value" in r) return r.value;
+        return createElement(Later, { promise: r.promise });
+      }
       return value;
     }
     if (Array.isArray(value)) {
@@ -22,21 +35,32 @@ async function load(address) {
     }
     return value;
   };
+  // A part of the page that hasn't arrived: use() waits for its row, and Suspense shows the fallback.
+  function Later({ promise }) {
+    return use(promise);
+  }
 
   const response = await fetch(address, { headers: { RSC: "1" } });
-  for (const line of (await response.text()).split("\n").filter(Boolean)) {
-    const colon = line.indexOf(":");
-    const id = line.slice(0, colon);
-    const text = line.slice(colon + 1);
-    if (text.startsWith("I")) {
-      // A client component: find its code in the browser's bundle, by file and export.
-      const [file, name] = JSON.parse(text.slice(1));
-      rows.set(id, modules[file][name]);
-    } else {
-      rows.set(id, decode(JSON.parse(text)));
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  (async () => {
+    let buffer = "";
+    for (let read = await reader.read(); !read.done; read = await reader.read()) {
+      buffer += read.value;
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines) {
+        const colon = line.indexOf(":");
+        const id = line.slice(0, colon);
+        const text = line.slice(colon + 1);
+        const value = text.startsWith("I")
+          ? modules[JSON.parse(text.slice(1))[0]][JSON.parse(text.slice(1))[1]]
+          : decode(JSON.parse(text));
+        row(id).value = value;
+        row(id).resolve(value);
+      }
     }
-  }
-  return rows.get("0");
+  })();
+  return row("0").promise;
 }
 
 const root = createRoot(document.getElementById("root"));
