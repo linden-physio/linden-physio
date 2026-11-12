@@ -6,6 +6,7 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { makeApp } from "./routes.ts";
 import { setting } from "./env.ts";
 import { seed } from "./seed.ts";
+import { makeClinic } from "./clinic.ts";
 
 // Someone coming back wants the physiotherapist they saw last time, so each free time names who is free.
 test("each free time names the physiotherapists who are free then", async (t) => {
@@ -63,6 +64,17 @@ test("each free time names the physiotherapists who are free then", async (t) =>
     "09:30 Oskar",
     "10:00 Karin, Oskar",
   ]);
+
+  // The chip said "Karin, Oskar", so the booking's answer says who it went to. Karin has 10:00 now,
+  // so the next booking at 10:00 goes to Oskar.
+  const clinic = makeClinic(db, () => new Date("2026-11-09T18:00:00.000Z"));
+  const second = await clinic.book({
+    start: "2026-11-10T09:00:00.000Z",
+    service: "first-visit",
+    name: "Ali Berg",
+    email: "ali@example.com",
+  });
+  assert.deepEqual(second.kind === "booked" && second.with, "Oskar");
 
   // Thursday afternoon too.
   assert.deepEqual((await names("2026-11-12", "first-visit"))[0], "12:00 Karin, Oskar");

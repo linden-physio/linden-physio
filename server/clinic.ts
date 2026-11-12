@@ -40,7 +40,9 @@ function earliest(answers: ({ date: string; time: string } | null)[]) {
   return found[0] ?? null;
 }
 
-export type Booked = { kind: "booked"; id: string; startsAt: string } | { kind: "taken" } | { kind: "no-service" };
+// with is the first name of the physiotherapist the booking is with.
+export type Booked =
+  { kind: "booked"; id: string; startsAt: string; with: string } | { kind: "taken" } | { kind: "no-service" };
 export type Cancelled = "cancelled" | "started" | "missing";
 
 // What the clinic can do, with the given database. now() is the time; the tests give it a fixed one.
@@ -143,7 +145,7 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
           })
           .returning({ id: bookings.publicId });
         // The id is what the person who booked cancels with.
-        return { kind: "booked", id: made.id, startsAt: toInstant(date, time) };
+        return { kind: "booked", id: made.id, startsAt: toInstant(date, time), with: firstName(person.name) };
       } catch (error) {
         // The table's rule refused it: 23P01 (exclusion constraint), or now and then 40P01, when two
         // inserts were waiting for each other and Postgres stopped one of them.

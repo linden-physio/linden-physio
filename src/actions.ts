@@ -36,5 +36,6 @@ export async function book(previous: FormState, data: FormData): Promise<FormSta
   // answer. updateTag makes the next request wait for fresh times, so this answer has them.
   updateTag("free-times");
   refresh();
-  return { kind: "booked", id: booked.id, name, date, time: booked.startsAt };
+  // When more than one physiotherapist was free, the person couldn't choose, so say who it is with.
+  return { kind: "booked", id: booked.id, name, date, time: booked.startsAt, with: booked.with };
 }
