@@ -1,6 +1,6 @@
 import { clockTime } from "./clockTime";
 import { dayName } from "./dayName";
-import type { FreeTimes } from "./api";
+import type { FreeTimes } from "../server/schemas.ts";
 
 // "Next free: Tuesday 10:00", once the clinic's server has answered with the free times.
 export async function NextFree({ date, free }: { date: string; free: Promise<FreeTimes | null> }) {

@@ -4,7 +4,7 @@ import { CalendarX } from "lucide-react";
 import { dayName } from "./dayName";
 import { TimeChip } from "./TimeChip";
 import { clockTime } from "./clockTime";
-import type { FreeTimes } from "./api";
+import type { FreeTimes } from "../server/schemas.ts";
 import { usePicked } from "./Booking";
 
 export function TimeList({

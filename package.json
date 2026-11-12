@@ -10,7 +10,6 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "api-types": "openapi-typescript https://raw.githubusercontent.com/linden-physio/linden-physio-api/d991a0df7a754c142ed2acf93dff4d047eb0aab0/openapi.yaml -o src/api-types.ts",
     "migrate": "node --env-file-if-exists=.env.local server/migrate.ts",
     "seed": "node --env-file-if-exists=.env.local server/seed.ts",
     "generate": "drizzle-kit generate"
@@ -30,8 +29,6 @@
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.14.0",
-    "msw": "3.0.5",
-    "openapi-typescript": "7.13.0",
     "prettier": "3.9.10",
     "prettier-plugin-tailwindcss": "0.8.1",
     "tailwindcss": "4.3.5",
@@ -57,9 +54,6 @@
   "overrides": {
     "eslint-plugin-jsx-a11y": {
       "eslint": "$eslint"
-    },
-    "openapi-typescript": {
-      "typescript": "$typescript"
     }
   }
 }

@@ -1,6 +1,6 @@
 import { TimeList } from "./TimeList";
 import { TryAgain } from "./TryAgain";
-import type { FreeTimes } from "./api";
+import type { FreeTimes } from "../server/schemas.ts";
 
 // The day's free times, made on the server once the clinic's server has answered. Until then, the
 // Suspense boundary around it shows its fallback in its place.

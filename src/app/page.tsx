@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { z } from "zod";
-import { getFreeTimes } from "../api";
+import { clinic } from "../../server/clinic.ts";
 import { services } from "../services";
 import { NextFree } from "../NextFree";
 import { ServiceCards } from "../ServiceCards";
@@ -19,15 +19,17 @@ const Choice = z.object({
 });
 
 // The page at /. It runs on the server: it reads the day and the service from the address and asks the
-// clinic's server for that day's free times. It doesn't wait for the answer: it sends the page at once,
-// and the two parts that need the times wait inside Suspense boundaries, each with a placeholder. When
+// clinic's code for that day's free times, from the database. It doesn't wait for the answer: it sends
+// the page at once, and the two parts that need the times wait inside Suspense boundaries, each with a placeholder. When
 // the answer comes, their HTML follows in the same response and takes the placeholders' place.
 export default async function Page({ searchParams }: PageProps<"/">) {
   const { day, service } = Choice.parse(await searchParams);
-  const free = getFreeTimes(day, service).catch((error) => {
-    console.error(error);
-    return null;
-  });
+  const free = clinic()
+    .freeTimesOn(day, service)
+    .catch((error) => {
+      console.error(error);
+      return null;
+    });
 
   return (
     <>

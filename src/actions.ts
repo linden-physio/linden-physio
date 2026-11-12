@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import { z } from "zod";
-import { postBooking, type Booking } from "./api";
+import { clinic } from "../server/clinic.ts";
 import { services } from "./services";
 import type { FormState } from "./Message";
 
@@ -25,14 +25,13 @@ export async function book(previous: FormState, data: FormData): Promise<FormSta
   const fields = BookingFields.safeParse(Object.fromEntries(data));
   if (!fields.success) return { kind: "invalid", message: fields.error.issues[0].message };
   const { time, service, date, name, email } = fields.data;
-  const response = await postBooking({ start: time, service, name, email });
-  if (response.status === 409) {
+  const booked = await clinic().book({ start: time, service, name, email });
+  if (booked.kind === "taken") {
     refresh();
     return { kind: "failed", message: "Someone just booked that time. Please pick another." };
   }
-  if (!response.ok) return { kind: "failed", message: "We couldn't take your booking. Please try again." };
-  const made: Booking = await response.json();
+  if (booked.kind !== "booked") return { kind: "failed", message: "We couldn't take your booking. Please try again." };
   // The free times have changed: send the page's new free times back with the answer.
   refresh();
-  return { kind: "booked", id: made.id, name, date, time: made.startsAt };
+  return { kind: "booked", id: booked.id, name, date, time: booked.startsAt };
 }
