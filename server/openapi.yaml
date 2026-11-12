@@ -98,10 +98,14 @@ components:
           type: array
           items:
             type: object
-            required: [startsAt]
+            required: [startsAt, with]
             additionalProperties: false
             properties:
               startsAt: { type: string, format: date-time }
+              with:
+                description: The first names of the physiotherapists who are free then, like ["Karin", "Oskar"].
+                type: array
+                items: { type: string }
         nearest:
           oneOf:
             - type: "null"

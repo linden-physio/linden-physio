@@ -23,6 +23,11 @@ function addDays(date: string, days: number): string {
 const wall = (column: AnyPgColumn, format: string) =>
   sql<string>`to_char(${column} AT TIME ZONE 'Europe/Stockholm', ${format})`;
 
+// "Karin" from "Karin Holm".
+function firstName(name: string): string {
+  return name.trim().split(/\s+/)[0];
+}
+
 // Postgres's own error, under the one drizzle wraps it in.
 function postgresError(error: unknown): pg.DatabaseError | null {
   const cause = error instanceof Error ? error.cause : null;
@@ -60,7 +65,12 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
 
   // Everything needed to work out a day's free times: the hours, the staff, and each one's bookings.
   async function diary(date: string) {
-    const [hours, people, booked] = await Promise.all([hoursByWeekday(), db.select().from(staff), bookingsFrom(date)]);
+    // By id, so a time's names always come in the same order, and booking tries people in that order.
+    const [hours, people, booked] = await Promise.all([
+      hoursByWeekday(),
+      db.select().from(staff).orderBy(staff.id),
+      bookingsFrom(date),
+    ]);
     return {
       hours,
       people: people.map((person) => ({ ...person, bookings: booked.filter((b) => b.staffId === person.id) })),
@@ -90,15 +100,22 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
     const length = await minutesFor(service);
     if (length === null) return null;
     const { hours, people } = await diary(date);
-    // A time is free if any physiotherapist is free then.
-    const times = [...new Set(people.flatMap((person) => freeTimes(date, length, hours, person.bookings)))].sort();
+    // A time is free if any physiotherapist is free then. Each time carries the first names of the
+    // ones who are, so someone coming back can see whom they'd see.
+    const free = new Map<string, string[]>();
+    for (const person of people) {
+      for (const time of freeTimes(date, length, hours, person.bookings)) {
+        free.set(time, [...(free.get(time) ?? []), firstName(person.name)]);
+      }
+    }
+    const times = [...free.keys()].sort();
     const closed = hours[new Date(date + "T12:00").getDay()] === "closed";
     const nearest = closed
       ? earliest(people.map((person) => nearestFreeTime(date, length, hours, person.bookings)))
       : null;
     return {
       closed,
-      times: times.map((time) => ({ startsAt: toInstant(date, time) })),
+      times: times.map((time) => ({ startsAt: toInstant(date, time), with: free.get(time) ?? [] })),
       nearest: nearest && { date: nearest.date, startsAt: toInstant(nearest.date, nearest.time) },
     };
   }

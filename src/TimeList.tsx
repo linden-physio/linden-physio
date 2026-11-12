@@ -41,8 +41,14 @@ export function TimeList({
       {!closed && (
         <fieldset id="free-times" className="mt-3 flex flex-wrap gap-2">
           <legend className="sr-only">Pick a time</legend>
-          {times.map(({ startsAt }) => (
-            <TimeChip key={startsAt} time={startsAt} picked={startsAt === picked} onPick={() => pick(startsAt)} />
+          {times.map(({ startsAt, with: names }) => (
+            <TimeChip
+              key={startsAt}
+              time={startsAt}
+              names={names}
+              picked={startsAt === picked}
+              onPick={() => pick(startsAt)}
+            />
           ))}
         </fieldset>
       )}

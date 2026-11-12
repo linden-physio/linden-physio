@@ -21,7 +21,8 @@ export const BookingId = z.uuid();
 
 export const FreeTimes = z.object({
   closed: z.boolean(),
-  times: z.array(z.object({ startsAt: z.iso.datetime() })),
+  // Each free time, with the first names of the physiotherapists who are free then.
+  times: z.array(z.object({ startsAt: z.iso.datetime(), with: z.array(z.string()) })),
   nearest: z.object({ date: z.iso.date(), startsAt: z.iso.datetime() }).nullable(),
 });
 export type FreeTimes = z.infer<typeof FreeTimes>;
