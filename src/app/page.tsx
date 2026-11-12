@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { cacheLife } from "next/cache";
 import { z } from "zod";
 import { clinic } from "../../server/clinic.ts";
 import { services } from "../services";
@@ -21,14 +22,20 @@ const Choice = z.object({
 
 type Choice = z.infer<typeof Choice>;
 
-// The free times for what the address asks for. Not cached yet: the database is asked on every visit.
+// A day's free times for a service, kept for an hour: every visit in that hour gets the same answer
+// without asking the database. The day and the service are the cache's key.
+async function cachedFreeTimes(day: string, service: string) {
+  "use cache";
+  cacheLife("hours");
+  return clinic().freeTimesOn(day, service);
+}
+
+// The free times for what the address asks for, or null if they couldn't be had.
 function freeTimesFor({ day, service }: Choice) {
-  return clinic()
-    .freeTimesOn(day, service)
-    .catch((error) => {
-      console.error(error);
-      return null;
-    });
+  return cachedFreeTimes(day, service).catch((error) => {
+    console.error(error);
+    return null;
+  });
 }
 
 // The page at /. The parts that don't depend on the address (the clinic's name, the headings' places)
