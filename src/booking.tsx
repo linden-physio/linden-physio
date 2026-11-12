@@ -1,7 +1,4 @@
-import { StrictMode } from "react";
 import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createRoot } from "react-dom/client";
-import "./index.css";
 import { ServiceCards, services } from "./ServiceCards";
 import { DayPicker } from "./DayPicker";
 import { TimeList } from "./TimeList";
@@ -14,7 +11,7 @@ import { useFreeTimes } from "./useFreeTimes";
 import { Button } from "@/components/ui/button";
 
 // npm run dev:mock answers the requests the server can't answer yet in the browser, from the contract.
-if (import.meta.env.VITE_MOCK_API === "on") {
+if (process.env.NEXT_PUBLIC_MOCK_API === "on") {
   const { worker } = await import("./mocks/browser");
   await worker.start({ onUnhandledFrame: "bypass" });
 }
@@ -107,11 +104,12 @@ const queryClient = new QueryClient({
   }),
 });
 
-// In development, StrictMode runs each effect, cleans it up and runs it again, to show whether the cleanup works.
-createRoot(document.querySelector("#app")!).render(
-  <StrictMode>
+// The whole page, with the query cache around it. Next.js already runs StrictMode in development: it
+// runs each effect, cleans it up and runs it again, to show whether the cleanup works.
+export default function Booking() {
+  return (
     <QueryClientProvider client={queryClient}>
       <App />
     </QueryClientProvider>
-  </StrictMode>,
-);
+  );
+}
