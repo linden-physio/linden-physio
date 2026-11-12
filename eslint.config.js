@@ -24,6 +24,11 @@ export default defineConfig([
     },
   },
   {
+    // The clinic's server runs in Node.
+    files: ["server/**/*.ts"],
+    languageOptions: { globals: globals.node },
+  },
+  {
     // The kit's Label passes htmlFor through from whoever uses it.
     files: ["src/components/ui/label.tsx"],
     rules: { "jsx-a11y/label-has-associated-control": "off" },
