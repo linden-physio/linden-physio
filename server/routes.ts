@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { z } from "zod";
@@ -14,18 +13,13 @@ function problems(error: z.ZodError) {
   };
 }
 
-// The server's addresses, talking to the given database, and answering the pages at the given origins.
-// What each one does is in clinic.ts; here it's only HTTP: reading the request and writing the answer.
-export function makeApp(db: NodePgDatabase, allowedOrigins: string[], now: () => Date = () => new Date()) {
+// The server's addresses, talking to the given database. The page that calls them comes from the same
+// origin, so the browser needs no permission (no CORS). What each one does is in clinic.ts; here it's
+// only HTTP: reading the request and writing the answer.
+export function makeApp(db: NodePgDatabase, now: () => Date = () => new Date()) {
   const clinic = makeClinic(db, now);
   const app = new Hono();
   app.use(logger());
-  // Each environment names the origins it allows. A * stands for any run of letters, digits and
-  // dashes, because each preview of the page gets its own address.
-  const patterns = allowedOrigins.map(
-    (origin) => new RegExp("^" + origin.replaceAll(".", "\\.").replaceAll("*", "[a-z0-9-]+") + "$"),
-  );
-  app.use(cors({ origin: (origin) => (patterns.some((pattern) => pattern.test(origin)) ? origin : null) }));
 
   app.get("/free-times", async (c) => {
     const query = FreeTimesQuery.safeParse(c.req.query());

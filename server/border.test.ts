@@ -8,7 +8,7 @@ test("a booking with no name and a start of 'soon' is refused before it reaches 
   const db = drizzle(setting("TEST_DATABASE_URL"));
   t.after(() => db.$client.end());
 
-  const answer = await makeApp(db, []).request("/bookings", {
+  const answer = await makeApp(db).request("/bookings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ start: "soon", service: "first-visit", email: "maja@example.com" }),

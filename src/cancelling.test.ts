@@ -20,7 +20,7 @@ test("the page's message for each answer to a cancel", async (t) => {
 
   // Monday evening, then Tuesday at ten past ten.
   let time = new Date("2026-11-09T18:00:00.000Z");
-  const app = makeApp(db, [], () => time);
+  const app = makeApp(db, () => time);
   const made = await app.request("/bookings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

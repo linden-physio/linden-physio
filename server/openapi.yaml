@@ -1,15 +1,15 @@
 openapi: 3.1.0
 info:
   title: Linden Physio API
-  version: 1.1.0
+  version: 1.2.0
   description: >
-    What the booking page and the server agree on. The server answers as this file says, and the page
-    generates its types from it. A change to the API starts as a change to this file, in a pull request
-    both sides review.
+    The clinic's addresses under /api. The booking page calls the clinic's code directly now, so this
+    file is for whoever else calls them. A change to them starts as a change to this file, in a pull
+    request.
 # Nobody signs in: anyone may ask for free times and book.
 security: []
 servers:
-  - url: http://localhost:3000
+  - url: http://localhost:5173/api
 paths:
   /free-times:
     get:

@@ -17,7 +17,7 @@ test("a booking can be cancelled until it starts, and only once", async (t) => {
 
   // Monday evening, then Tuesday at ten past ten.
   let time = new Date("2026-11-09T18:00:00.000Z");
-  const app = makeApp(db, [], () => time);
+  const app = makeApp(db, () => time);
   const book = (start: string) =>
     app.request("/bookings", {
       method: "POST",

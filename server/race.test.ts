@@ -18,7 +18,7 @@ test("three bookings for the same time at the same moment, with two physiotherap
   // A server that has been running a while has its connections open already. Open three, so that the
   // three bookings below really do run side by side.
   await Promise.all([db.execute(sql`SELECT 1`), db.execute(sql`SELECT 1`), db.execute(sql`SELECT 1`)]);
-  const server = serve({ fetch: makeApp(db, []).fetch, port: 3001 });
+  const server = serve({ fetch: makeApp(db).fetch, port: 3001 });
   t.after(async () => {
     server.close();
     await db.$client.end();
