@@ -28,6 +28,10 @@ export const bookings = pgTable(
 export const staff = pgTable("staff", {
   id: serial().primaryKey(),
   name: text().notNull(),
+  // What they sign in with: their work address, and their password, never as written. passwordHash
+  // holds what scrypt makes of it (see passwords.ts), from which the password can't be worked back.
+  email: text().unique(),
+  passwordHash: text("password_hash"),
 });
 
 export const services = pgTable("services", {

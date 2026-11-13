@@ -57,6 +57,13 @@
       "when": 1794433564578,
       "tag": "0007_give_each_booking_a_public_id",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794551440486,
+      "tag": "0008_give_staff_an_address_and_a_password",
+      "breakpoints": true
     }
   ]
 }

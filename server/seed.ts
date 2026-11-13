@@ -1,7 +1,9 @@
+import { eq } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { bookings, openingHours, services, staff } from "./schema.ts";
 import { toInstant } from "./clock.ts";
 import { setting } from "./env.ts";
+import { hashPassword } from "./passwords.ts";
 
 // The clinic as it is today: its services, its opening hours and its physiotherapists.
 // Running it again changes nothing.
@@ -27,10 +29,13 @@ export async function seed(db: NodePgDatabase) {
   await db
     .insert(staff)
     .values([
-      { id: 1, name: "Karin Holm" },
-      { id: 2, name: "Oskar Nyberg" },
+      { id: 1, name: "Karin Holm", email: "karin@lindenphysio.com" },
+      { id: 2, name: "Oskar Nyberg", email: "oskar@lindenphysio.com" },
     ])
     .onConflictDoNothing();
+  // Rows from before staff had addresses.
+  await db.update(staff).set({ email: "karin@lindenphysio.com" }).where(eq(staff.id, 1));
+  await db.update(staff).set({ email: "oskar@lindenphysio.com" }).where(eq(staff.id, 2));
 }
 
 // A week of bookings to work with on this computer. Running it again changes nothing.
@@ -62,11 +67,26 @@ export async function seedWeek(db: NodePgDatabase) {
     .onConflictDoNothing();
 }
 
+// Passwords for this computer only: "karin-on-this-computer" and so on. Production's are set with
+// `npm run set-password`.
+export async function seedPasswords(db: NodePgDatabase) {
+  for (const [id, first] of [
+    [1, "karin"],
+    [2, "oskar"],
+  ] as const) {
+    await db
+      .update(staff)
+      .set({ passwordHash: await hashPassword(first + "-on-this-computer") })
+      .where(eq(staff.id, id));
+  }
+}
+
 // `npm run seed` fills the database named in DATABASE_URL.
 if (import.meta.main) {
   const db = drizzle(setting("DATABASE_URL"));
   await seed(db);
   await seedWeek(db);
+  await seedPasswords(db);
   await db.$client.end();
   console.log("Seeded the clinic's services, opening hours, staff and a week of bookings.");
 }

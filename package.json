@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "migrate": "node --env-file-if-exists=.env.local server/migrate.ts",
     "seed": "node --env-file-if-exists=.env.local server/seed.ts",
-    "generate": "drizzle-kit generate"
+    "generate": "drizzle-kit generate",
+    "set-password": "node --env-file-if-exists=.env.local server/set-password.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
