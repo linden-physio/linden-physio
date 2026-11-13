@@ -57,3 +57,5 @@ export const openingHours = pgTable("opening_hours", {
   opens: time().notNull(),
   closes: time().notNull(),
 });
+
+export * from "./auth-schema.ts";

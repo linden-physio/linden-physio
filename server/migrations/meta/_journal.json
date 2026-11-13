@@ -71,6 +71,13 @@
       "when": 1794551493237,
       "tag": "0009_remember_who_is_signed_in",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794551872764,
+      "tag": "0010_let_better_auth_keep_who_is_signed_in",
+      "breakpoints": true
     }
   ]
 }

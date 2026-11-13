@@ -1,17 +1,28 @@
 import "server-only";
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { clinicSessions, type Staff } from "../server/sessions.ts";
+import { eq } from "drizzle-orm";
+import { auth } from "../server/auth.ts";
+import { db } from "../server/db.ts";
+import { staff } from "../server/schema.ts";
 
-// The cookie's name. It holds the session's token and nothing else: no name, no address.
-export const sessionCookie = "session";
+export type Staff = { id: number; name: string; email: string };
 
-// Whoever is signed in on this request, or null. Read once for each request, however many parts of
-// the page ask.
+// Whoever is signed in on this request, as a member of staff, or null. Better Auth checks the session
+// cookie against its session table; the address it signed in with says which member of staff it is.
+// Read once for each request, however many parts of the page ask.
 export const signedIn = cache(async (): Promise<Staff | null> => {
-  const token = (await cookies()).get(sessionCookie)?.value;
-  return token ? clinicSessions().find(token) : null;
+  // The headers first: they tell next build that this runs for each request, before auth() needs
+  // its settings, which a build doesn't have.
+  const asked = await headers();
+  const session = await auth().api.getSession({ headers: asked });
+  if (!session) return null;
+  const [row] = await db()
+    .select({ id: staff.id, name: staff.name })
+    .from(staff)
+    .where(eq(staff.email, session.user.email.toLowerCase()));
+  return { id: row?.id ?? 0, name: row?.name ?? session.user.name, email: session.user.email };
 });
 
 // Whoever is signed in, or straight to the sign-in page. Every page and action that reads the staff's

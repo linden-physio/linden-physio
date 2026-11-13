@@ -1,39 +1,21 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { z } from "zod";
-import { clinicSessions } from "../server/sessions.ts";
-import { sessionCookie } from "./session";
+import { auth } from "../server/auth.ts";
 
-const SignIn = z.object({ email: z.string(), password: z.string() });
-
-export type SignInState = { message: string } | null;
-
-// Check the address and password. If they fit, start a session and give the browser its token in a
-// cookie that scripts on the page can't read (HttpOnly), that only goes over HTTPS (Secure), and that
-// other sites' pages can't send along (SameSite).
-export async function signIn(previous: SignInState, data: FormData): Promise<SignInState> {
-  const fields = SignIn.safeParse(Object.fromEntries(data));
-  if (!fields.success) return { message: "Write your address and your password." };
-  const sessions = clinicSessions();
-  const staff = await sessions.checkSignIn(fields.data.email, fields.data.password);
-  if (!staff) return { message: "That address and password don't match." };
-  const { token, expiresAt } = await sessions.start(staff.id);
-  (await cookies()).set(sessionCookie, token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    path: "/",
-    expires: expiresAt,
+// Start a sign-in with Microsoft: Better Auth makes the address of Microsoft's sign-in page, with our
+// app's id, where to come back to, and a random state it keeps in a cookie to check when we're back.
+export async function signInWithMicrosoft() {
+  const { url } = await auth().api.signInSocial({
+    body: { provider: "microsoft", callbackURL: "/staff" },
+    headers: await headers(),
   });
-  redirect("/staff");
+  if (!url) throw new Error("Better Auth gave no address for Microsoft's sign-in.");
+  redirect(url);
 }
 
 export async function signOut() {
-  const jar = await cookies();
-  const token = jar.get(sessionCookie)?.value;
-  if (token) await clinicSessions().end(token);
-  jar.delete(sessionCookie);
+  await auth().api.signOut({ headers: await headers() });
   redirect("/sign-in");
 }
