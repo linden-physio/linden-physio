@@ -78,6 +78,13 @@
       "when": 1794551872764,
       "tag": "0010_let_better_auth_keep_who_is_signed_in",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794551969707,
+      "tag": "0011_delete_the_passwords_and_our_own_sessions",
+      "breakpoints": true
     }
   ]
 }
