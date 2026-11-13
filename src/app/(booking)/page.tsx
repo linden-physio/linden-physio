@@ -1,14 +1,14 @@
 import { Suspense } from "react";
 import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
-import { clinic } from "../../server/clinic.ts";
-import { services } from "../services";
-import { NextFree } from "../NextFree";
-import { ServiceCards } from "../ServiceCards";
-import { DayPicker } from "../DayPicker";
-import { Booking } from "../Booking";
-import { Times } from "../Times";
-import type { FreeTimes } from "../../server/schemas.ts";
+import { clinic } from "../../../server/clinic.ts";
+import { services } from "../../services";
+import { NextFree } from "../../NextFree";
+import { ServiceCards } from "../../ServiceCards";
+import { DayPicker } from "../../DayPicker";
+import { Booking } from "../../Booking";
+import { Times } from "../../Times";
+import type { FreeTimes } from "../../../server/schemas.ts";
 
 // What the address asks for, like /?day=2026-11-17&service=follow-up. Anyone can type anything there,
 // so check it, and fall back to the first day and service when it doesn't fit.

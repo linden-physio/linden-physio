@@ -48,6 +48,11 @@ export type Booked =
   | { kind: "no-service" };
 export type Cancelled = "cancelled" | "started" | "missing";
 
+// One booking on the staff's day page.
+export type Visit = { id: string; start: string; end: string; name: string; service: string; priceSek: number };
+// A day at the clinic, for the staff: each physiotherapist's bookings, and the opening hours.
+export type Day = { hours: OpeningHours; people: { id: number; name: string; visits: Visit[] }[] };
+
 // What the clinic can do, with the given database. now() is the time; the tests give it a fixed one.
 // The pages and the server actions call these functions directly; the routes in routes.ts answer
 // HTTP requests with them.
@@ -174,7 +179,42 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
     return left ? "started" : "missing";
   }
 
-  return { freeTimesOn, book, cancel };
+  // A day at the clinic, with every booking and who it's for. Only for the staff.
+  async function day(date: string): Promise<Day> {
+    const [hours, people, visits] = await Promise.all([
+      hoursByWeekday(),
+      db.select().from(staff).orderBy(staff.id),
+      db
+        .select({
+          staffId: bookings.staffId,
+          id: bookings.publicId,
+          start: wall(bookings.startsAt, "HH24:MI"),
+          end: wall(bookings.endsAt, "HH24:MI"),
+          name: bookings.name,
+          service: services.title,
+          priceSek: services.priceSek,
+        })
+        .from(bookings)
+        .innerJoin(services, eq(bookings.service, services.id))
+        .where(
+          and(
+            gte(bookings.startsAt, toInstant(date, "00:00")),
+            lt(bookings.startsAt, toInstant(addDays(date, 1), "00:00")),
+          ),
+        )
+        .orderBy(bookings.startsAt),
+    ]);
+    return {
+      hours: hours[new Date(date + "T12:00").getDay()],
+      people: people.map((person) => ({
+        id: person.id,
+        name: person.name,
+        visits: visits.filter((visit) => visit.staffId === person.id),
+      })),
+    };
+  }
+
+  return { freeTimesOn, book, cancel, day };
 }
 
 // The clinic, with the database from the environment.
