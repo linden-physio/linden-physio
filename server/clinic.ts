@@ -48,6 +48,9 @@ export type Booked =
   | { kind: "no-service" };
 export type Cancelled = "cancelled" | "started" | "missing";
 
+// One of someone's own bookings, on their page.
+export type OwnBooking = { id: string; startsAt: string; service: string; with: string };
+
 // One booking on the staff's day page.
 export type Visit = { id: string; start: string; end: string; name: string; service: string; priceSek: number };
 // A day at the clinic, for the staff: each physiotherapist's bookings, and the opening hours.
@@ -214,7 +217,21 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
     };
   }
 
-  return { freeTimesOn, book, cancel, day };
+  // The bookings made with an email address that haven't started yet, soonest first.
+  async function bookingsFor(email: string): Promise<OwnBooking[]> {
+    const rows = await db
+      .select({ id: bookings.publicId, startsAt: bookings.startsAt, service: services.title, with: staff.name })
+      .from(bookings)
+      .innerJoin(services, eq(bookings.service, services.id))
+      .innerJoin(staff, eq(bookings.staffId, staff.id))
+      .where(
+        and(sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`, gt(bookings.startsAt, now().toISOString())),
+      )
+      .orderBy(bookings.startsAt);
+    return rows.map((row) => ({ ...row, startsAt: new Date(row.startsAt).toISOString(), with: firstName(row.with) }));
+  }
+
+  return { freeTimesOn, book, cancel, day, bookingsFor };
 }
 
 // The clinic, with the database from the environment.
