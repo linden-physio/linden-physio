@@ -170,15 +170,21 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
     return { kind: "taken" };
   }
 
-  async function cancel(id: string): Promise<Cancelled> {
+  // Cancel a booking by its id. With an email address, only a booking made with that address: someone
+  // signed in from their link can cancel their own bookings and no one else's.
+  async function cancel(id: string, email?: string): Promise<Cancelled> {
+    const ours = and(
+      eq(bookings.publicId, id),
+      email === undefined ? undefined : sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`,
+    );
     // Delete it only if it hasn't started, in one statement, so that nothing can change in between.
     const deleted = await db
       .delete(bookings)
-      .where(and(eq(bookings.publicId, id), gt(bookings.startsAt, now().toISOString())))
+      .where(and(ours, gt(bookings.startsAt, now().toISOString())))
       .returning({ id: bookings.id });
     if (deleted.length > 0) return "cancelled";
-    // Nothing deleted: either there's no such booking, or it has already started.
-    const [left] = await db.select({ id: bookings.id }).from(bookings).where(eq(bookings.publicId, id));
+    // Nothing deleted: either there's no such booking (of theirs), or it has already started.
+    const [left] = await db.select({ id: bookings.id }).from(bookings).where(ours);
     return left ? "started" : "missing";
   }
 
