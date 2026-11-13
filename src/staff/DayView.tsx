@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import type { Day } from "../../server/clinic.ts";
 import { cancelVisit } from "../staffActions";
 import type { Staff } from "../session";
+import { may } from "../../server/permissions.ts";
 
 // The day runs from 08:00 to 18:00 on the page, and each hour is this tall.
 const first = 8;
@@ -28,9 +29,8 @@ function addDays(date: string, days: number): string {
 const kronor = new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK", maximumFractionDigits: 0 });
 
 // A day at the clinic, as the staff see it: a column for each physiotherapist, each booking at its time.
-// The owner sees what the day is worth and can cancel any booking; a physio, only their own.
+// What each person sees and may cancel comes from permissions.ts, as the action's check does.
 export function DayView({ date, day, who }: { date: string; day: Day; who: Staff }) {
-  const owner = who.role === "owner";
   const visits = day.people.flatMap((person) => person.visits);
   const value = visits.reduce((sum, visit) => sum + visit.priceSek, 0);
   const hours = Array.from({ length: last - first + 1 }, (_, i) => String(first + i).padStart(2, "0") + ":00");
@@ -57,7 +57,7 @@ export function DayView({ date, day, who }: { date: string; day: Day; who: Staff
             <dt className="text-small text-ink-600">Booked</dt>
             <dd className="text-title">{visits.length}</dd>
           </div>
-          {owner && (
+          {may(who, { do: "see the takings" }) && (
             <div>
               <dt className="text-small text-ink-600">Value</dt>
               <dd className="text-title">{kronor.format(value)}</dd>
@@ -94,10 +94,12 @@ export function DayView({ date, day, who }: { date: string; day: Day; who: Staff
                   <Closed from={day.hours.close} to="18:00" />
                 </>
               )}
+              {/* Keyed by time, not by the booking's id: the id is what cancels a booking at
+                  /api/bookings/{id}, so it goes into the page only where this person may cancel. */}
               <ul aria-label={person.name + "'s bookings"}>
                 {person.visits.map((visit) => (
                   <li
-                    key={visit.id}
+                    key={visit.start}
                     className="absolute inset-x-1 overflow-hidden rounded-sm border border-brand-600/40 bg-brand-50 px-2 py-1 text-small"
                     style={{ top: top(visit.start) + "rem", height: top(visit.end) - top(visit.start) + "rem" }}
                   >
@@ -106,7 +108,7 @@ export function DayView({ date, day, who }: { date: string; day: Day; who: Staff
                         <span className="font-medium">{visit.start}</span> {visit.name}
                         <span className="block text-ink-600">{visit.service}</span>
                       </div>
-                      {(owner || person.id === who.id) && (
+                      {may(who, { do: "cancel", staffId: person.id }) && (
                         <form action={cancelVisit}>
                           <input type="hidden" name="id" value={visit.id} />
                           <button

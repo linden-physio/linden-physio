@@ -6,6 +6,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { auth } from "../server/auth.ts";
 import { clinic } from "../server/clinic.ts";
+import { may } from "../server/permissions.ts";
 import { staffOnly } from "./session";
 
 // Start a sign-in with Microsoft: Better Auth makes the address of Microsoft's sign-in page, with our
@@ -24,10 +25,13 @@ export async function signOut() {
   redirect("/sign-in");
 }
 
-// Cancel a booking from the day page, for someone who rang to say they can't come.
+// Cancel a booking from the day page, for someone who rang to say they can't come. The page shows the
+// button only to those who may, but anyone can post to this action, so it checks again.
 export async function cancelVisit(data: FormData) {
-  await staffOnly();
+  const who = await staffOnly();
   const id = z.uuid().parse(data.get("id"));
+  const staffId = await clinic().bookedWith(id);
+  if (staffId === null || !may(who, { do: "cancel", staffId })) return;
   await clinic().cancel(id);
   updateTag("free-times");
   refresh();

@@ -237,7 +237,13 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
     return rows.map((row) => ({ ...row, startsAt: new Date(row.startsAt).toISOString(), with: firstName(row.with) }));
   }
 
-  return { freeTimesOn, book, cancel, day, bookingsFor };
+  // Which physiotherapist a booking is with, or null if there's no such booking.
+  async function bookedWith(id: string): Promise<number | null> {
+    const [row] = await db.select({ staffId: bookings.staffId }).from(bookings).where(eq(bookings.publicId, id));
+    return row?.staffId ?? null;
+  }
+
+  return { freeTimesOn, book, cancel, day, bookingsFor, bookedWith };
 }
 
 // The clinic, with the database from the environment.
