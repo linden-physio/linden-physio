@@ -24,6 +24,12 @@ function makeAuth() {
         tenantId: setting("ENTRA_TENANT_ID"),
         prompt: "select_account",
         disableProfilePhoto: true,
+        // Entra puts an email claim in the ID token only for an account that has a mailbox address,
+        // and the clinic's accounts have none: Better Auth then refuses with ?error=email_not_found.
+        // Their sign-in name (preferred_username, here karin@lindenphysio.com) is the address they're
+        // known by. Microsoft says not to trust it from just any tenant, because whoever runs a tenant
+        // chooses its names; this app takes only the clinic's own tenant, whose names the clinic chooses.
+        mapProfileToUser: (profile) => ({ email: profile.email ?? profile.preferred_username }),
       },
     },
     // Microsoft's access and refresh tokens are stored encrypted, not as they came.
