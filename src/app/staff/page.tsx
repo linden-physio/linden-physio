@@ -4,6 +4,7 @@ import { z } from "zod";
 import { clinic } from "../../../server/clinic.ts";
 import { fromInstant } from "../../../server/clock.ts";
 import { DayView } from "../../staff/DayView";
+import { staffOnly } from "../../session";
 
 export const metadata: Metadata = { title: "Day · Linden Physio" };
 
@@ -20,6 +21,8 @@ export default function StaffDay({ searchParams }: PageProps<"/staff">) {
 }
 
 async function Day({ searchParams }: Pick<PageProps<"/staff">, "searchParams">) {
+  // The proxy only saw that there's a cookie. Check that it belongs to someone before reading the day.
+  await staffOnly();
   const parsed = Choice.safeParse(await searchParams);
   const date = (parsed.success && parsed.data.day) || fromInstant(new Date().toISOString()).date;
   return <DayView date={date} day={await clinic().day(date)} />;
