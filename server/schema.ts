@@ -34,6 +34,16 @@ export const staff = pgTable("staff", {
   passwordHash: text("password_hash"),
 });
 
+// Who is signed in. The browser keeps a long random token in a cookie, and this table keeps only the
+// token's SHA-256, so a copy of the table can't be used to sign in as anyone. Signing out deletes the row.
+export const sessions = pgTable("sessions", {
+  tokenHash: text("token_hash").primaryKey(),
+  staffId: integer("staff_id")
+    .notNull()
+    .references(() => staff.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
 export const services = pgTable("services", {
   id: text().primaryKey(), // like "first-visit"
   title: text().notNull(),

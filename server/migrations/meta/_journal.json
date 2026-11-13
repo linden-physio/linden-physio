@@ -64,6 +64,13 @@
       "when": 1794551440486,
       "tag": "0008_give_staff_an_address_and_a_password",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794551493237,
+      "tag": "0009_remember_who_is_signed_in",
+      "breakpoints": true
     }
   ]
 }
