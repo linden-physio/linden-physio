@@ -1,7 +1,9 @@
 import { betterAuth } from "better-auth";
+import { eq } from "drizzle-orm";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import * as schema from "./auth-schema.ts";
+import { staff } from "./schema.ts";
 import { db } from "./db.ts";
 import { setting } from "./env.ts";
 
@@ -32,6 +34,17 @@ function makeAuth() {
         mapProfileToUser: (profile) => ({ email: profile.email ?? profile.preferred_username }),
       },
     },
+    // Anyone with an account in the clinic's Entra ID can get through Microsoft, the admin account
+    // too. Let in only the people in the staff table, by their address, every time they sign in.
+    user: {
+      validateUserInfo: async ({ user }) => {
+        const email = user.email?.toLowerCase() ?? "";
+        const [member] = await db().select({ id: staff.id }).from(staff).where(eq(staff.email, email));
+        if (!member) return { error: "not_staff", errorDescription: "Only the clinic's staff can sign in here." };
+      },
+    },
+    // Where a refused sign-in lands, with ?error=not_staff.
+    onAPIError: { errorURL: "/sign-in" },
     // Microsoft's access and refresh tokens are stored encrypted, not as they came.
     account: { encryptOAuthTokens: true },
     session: { expiresIn: 7 * 24 * 60 * 60 },

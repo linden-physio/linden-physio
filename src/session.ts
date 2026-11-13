@@ -22,7 +22,9 @@ export const signedIn = cache(async (): Promise<Staff | null> => {
     .select({ id: staff.id, name: staff.name })
     .from(staff)
     .where(eq(staff.email, session.user.email.toLowerCase()));
-  return { id: row?.id ?? 0, name: row?.name ?? session.user.name, email: session.user.email };
+  // Signed in, but not (or no longer) on the staff.
+  if (!row) return null;
+  return { id: row.id, name: row.name, email: session.user.email };
 });
 
 // Whoever is signed in, or straight to the sign-in page. Every page and action that reads the staff's
