@@ -1,6 +1,6 @@
 import pg from "pg";
 import { and, eq, gt, gte, lt, sql } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { NodePgDatabase, NodePgTransaction } from "drizzle-orm/node-postgres";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { bookings, businesses, openingHours, services, staff } from "./schema.ts";
 import type { FreeTimes, NewBooking } from "./schemas.ts";
@@ -59,11 +59,10 @@ export type Visit = { id: string; start: string; end: string; name: string; serv
 // A day at the clinic, for the staff: each physiotherapist's bookings, and the opening hours.
 export type Day = { hours: OpeningHours; people: { id: number; name: string; visits: Visit[] }[] };
 
-// The one way into a business's data. It takes the business first, and every query in it asks only
-// for that business's rows, so no page or route can forget to. now() is the time; the tests give it a
-// fixed one. The pages and the server actions call these functions directly; the routes in routes.ts
-// answer HTTP requests with them.
-export function makeClinic(db: NodePgDatabase, business: string, now: () => Date = () => new Date()) {
+// What a business can do, inside a transaction (below) that Postgres already limits to its rows.
+// Every query here asks only for the business's rows too.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => Date) {
   const ofBusiness = {
     bookings: eq(bookings.businessId, business),
     staff: eq(staff.businessId, business),
@@ -122,12 +121,11 @@ export function makeClinic(db: NodePgDatabase, business: string, now: () => Date
 
   // Everything needed to work out a day's free times: the hours, the staff, and each one's bookings.
   async function diary(date: string) {
+    // One after another: a transaction is one connection, which runs one query at a time.
+    const hours = await hoursByWeekday();
     // By id, so a time's names always come in the same order, and booking tries people in that order.
-    const [hours, people, booked] = await Promise.all([
-      hoursByWeekday(),
-      db.select().from(staff).where(ofBusiness.staff).orderBy(staff.id),
-      bookingsFrom(date),
-    ]);
+    const people = await db.select().from(staff).where(ofBusiness.staff).orderBy(staff.id);
+    const booked = await bookingsFrom(date);
     return {
       hours,
       people: people.map((person) => ({ ...person, bookings: booked.filter((b) => b.staffId === person.id) })),
@@ -192,18 +190,22 @@ export function makeClinic(db: NodePgDatabase, business: string, now: () => Date
     const free = people.filter((person) => freeTimes(date, length, hours, person.bookings).includes(time));
     for (const person of free) {
       try {
-        const [made] = await db
-          .insert(bookings)
-          .values({
-            businessId: business,
-            startsAt: toInstant(date, time),
-            endsAt: toInstant(date, addMinutes(time, length)),
-            service: booking.service,
-            staffId: person.id,
-            name: booking.name,
-            email: booking.email,
-          })
-          .returning({ id: bookings.publicId });
+        // Each try in a savepoint (a transaction inside this one): a refused insert undoes only itself,
+        // and the next physiotherapist can still be tried.
+        const [made] = await db.transaction((savepoint) =>
+          savepoint
+            .insert(bookings)
+            .values({
+              businessId: business,
+              startsAt: toInstant(date, time),
+              endsAt: toInstant(date, addMinutes(time, length)),
+              service: booking.service,
+              staffId: person.id,
+              name: booking.name,
+              email: booking.email,
+            })
+            .returning({ id: bookings.publicId }),
+        );
         // The id is what the person who booked cancels with.
         return { kind: "booked", id: made.id, startsAt: toInstant(date, time), with: firstName(person.name) };
       } catch (error) {
@@ -237,30 +239,28 @@ export function makeClinic(db: NodePgDatabase, business: string, now: () => Date
 
   // A day at the clinic, with every booking and who it's for. Only for the staff.
   async function day(date: string): Promise<Day> {
-    const [hours, people, visits] = await Promise.all([
-      hoursByWeekday(),
-      db.select().from(staff).where(ofBusiness.staff).orderBy(staff.id),
-      db
-        .select({
-          staffId: bookings.staffId,
-          id: bookings.publicId,
-          start: wall(bookings.startsAt, "HH24:MI"),
-          end: wall(bookings.endsAt, "HH24:MI"),
-          name: bookings.name,
-          service: services.title,
-          priceSek: services.priceSek,
-        })
-        .from(bookings)
-        .innerJoin(services, eq(bookings.service, services.id))
-        .where(
-          and(
-            ofBusiness.bookings,
-            gte(bookings.startsAt, toInstant(date, "00:00")),
-            lt(bookings.startsAt, toInstant(addDays(date, 1), "00:00")),
-          ),
-        )
-        .orderBy(bookings.startsAt),
-    ]);
+    const hours = await hoursByWeekday();
+    const people = await db.select().from(staff).where(ofBusiness.staff).orderBy(staff.id);
+    const visits = await db
+      .select({
+        staffId: bookings.staffId,
+        id: bookings.publicId,
+        start: wall(bookings.startsAt, "HH24:MI"),
+        end: wall(bookings.endsAt, "HH24:MI"),
+        name: bookings.name,
+        service: services.title,
+        priceSek: services.priceSek,
+      })
+      .from(bookings)
+      .innerJoin(services, eq(bookings.service, services.id))
+      .where(
+        and(
+          ofBusiness.bookings,
+          gte(bookings.startsAt, toInstant(date, "00:00")),
+          lt(bookings.startsAt, toInstant(addDays(date, 1), "00:00")),
+        ),
+      )
+      .orderBy(bookings.startsAt);
     return {
       hours: hours[new Date(date + "T12:00").getDay()],
       people: people.map((person) => ({
@@ -299,6 +299,35 @@ export function makeClinic(db: NodePgDatabase, business: string, now: () => Date
   }
 
   return { about, offers, freeTimesOn, book, cancel, day, bookingsFor, bookedWith };
+}
+
+type Clinic = ReturnType<typeof clinicIn>;
+
+// The one way into a business's data. It takes the business first. Each call runs in a transaction
+// that tells Postgres which business it is for (app.business) and takes the role clinic_app, whose
+// row-level security policies show and accept only that business's rows. So even a query that forgets
+// to ask for the business gets no other business's rows: the net under the code's own check.
+// now() is the time; the tests give it a fixed one. The pages and the server actions call these
+// functions directly; the routes in routes.ts answer HTTP requests with them.
+export function makeClinic(db: NodePgDatabase, business: string, now: () => Date = () => new Date()): Clinic {
+  const inBusiness =
+    <A extends unknown[], R>(work: (clinic: Clinic) => (...args: A) => Promise<R>) =>
+    (...args: A) =>
+      db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT set_config('app.business', ${business}, true)`);
+        await tx.execute(sql`SET LOCAL ROLE clinic_app`);
+        return work(clinicIn(tx, business, now))(...args);
+      });
+  return {
+    about: inBusiness((c) => c.about),
+    offers: inBusiness((c) => c.offers),
+    freeTimesOn: inBusiness((c) => c.freeTimesOn),
+    book: inBusiness((c) => c.book),
+    cancel: inBusiness((c) => c.cancel),
+    day: inBusiness((c) => c.day),
+    bookingsFor: inBusiness((c) => c.bookingsFor),
+    bookedWith: inBusiness((c) => c.bookedWith),
+  };
 }
 
 // A business, with the database from the environment.
