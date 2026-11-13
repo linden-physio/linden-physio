@@ -42,7 +42,10 @@ function earliest(answers: ({ date: string; time: string } | null)[]) {
 
 // with is the first name of the physiotherapist the booking is with.
 export type Booked =
-  { kind: "booked"; id: string; startsAt: string; with: string } | { kind: "taken" } | { kind: "no-service" };
+  | { kind: "booked"; id: string; startsAt: string; with: string }
+  | { kind: "taken" }
+  | { kind: "passed" }
+  | { kind: "no-service" };
 export type Cancelled = "cancelled" | "started" | "missing";
 
 // What the clinic can do, with the given database. now() is the time; the tests give it a fixed one.
@@ -123,6 +126,9 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
   }
 
   async function book(booking: NewBooking): Promise<Booked> {
+    // Checked here, not only in the form's action, because /api/bookings takes bookings too, and
+    // anyone can post to it with any time.
+    if (Date.parse(booking.start) <= now().getTime()) return { kind: "passed" };
     const { date, time } = fromInstant(booking.start);
     const length = await minutesFor(booking.service);
     if (length === null) return { kind: "no-service" };

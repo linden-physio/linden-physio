@@ -45,11 +45,13 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "409":
-          description: Someone else booked that time first.
+          description: Someone else booked that time first, or the time has already passed.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Problem" }
-              example: { error: That time is no longer free. }
+              examples:
+                taken: { value: { error: That time is no longer free. } }
+                passed: { value: { error: That time has already passed. } }
   /bookings/{id}:
     delete:
       operationId: cancelBooking
