@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import type { Day } from "../../server/clinic.ts";
+import { cancelVisit } from "../staffActions";
 
 // The day runs from 08:00 to 18:00 on the page, and each hour is this tall.
 const first = 8;
@@ -95,8 +96,22 @@ export function DayView({ date, day }: { date: string; day: Day }) {
                     className="absolute inset-x-1 overflow-hidden rounded-sm border border-brand-600/40 bg-brand-50 px-2 py-1 text-small"
                     style={{ top: top(visit.start) + "rem", height: top(visit.end) - top(visit.start) + "rem" }}
                   >
-                    <span className="font-medium">{visit.start}</span> {visit.name}
-                    <span className="block text-ink-600">{visit.service}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-medium">{visit.start}</span> {visit.name}
+                        <span className="block text-ink-600">{visit.service}</span>
+                      </div>
+                      <form action={cancelVisit}>
+                        <input type="hidden" name="id" value={visit.id} />
+                        <button
+                          type="submit"
+                          className="text-brand-700 underline"
+                          aria-label={"Cancel " + visit.name + "'s booking at " + visit.start}
+                        >
+                          Cancel
+                        </button>
+                      </form>
+                    </div>
                   </li>
                 ))}
               </ul>
