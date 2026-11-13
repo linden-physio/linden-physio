@@ -85,6 +85,13 @@
       "when": 1794551969707,
       "tag": "0011_delete_the_passwords_and_our_own_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794552314554,
+      "tag": "0012_give_each_member_of_staff_a_role",
+      "breakpoints": true
     }
   ]
 }

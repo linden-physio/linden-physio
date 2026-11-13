@@ -30,6 +30,8 @@ export const staff = pgTable("staff", {
   name: text().notNull(),
   // Their work address: the one they sign in to Microsoft with.
   email: text().unique(),
+  // What they do at the clinic: "owner" runs it, "physio" treats patients.
+  role: text().notNull().default("physio"),
 });
 
 export const services = pgTable("services", {

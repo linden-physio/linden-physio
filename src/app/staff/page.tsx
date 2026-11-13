@@ -22,8 +22,8 @@ export default function StaffDay({ searchParams }: PageProps<"/staff">) {
 
 async function Day({ searchParams }: Pick<PageProps<"/staff">, "searchParams">) {
   // The proxy only saw that there's a cookie. Check that it belongs to someone before reading the day.
-  await staffOnly();
+  const who = await staffOnly();
   const parsed = Choice.safeParse(await searchParams);
   const date = (parsed.success && parsed.data.day) || fromInstant(new Date().toISOString()).date;
-  return <DayView date={date} day={await clinic().day(date)} />;
+  return <DayView date={date} day={await clinic().day(date)} who={who} />;
 }

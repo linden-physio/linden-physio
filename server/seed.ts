@@ -28,12 +28,12 @@ export async function seed(db: NodePgDatabase) {
   await db
     .insert(staff)
     .values([
-      { id: 1, name: "Karin Holm", email: "karin@lindenphysio.com" },
-      { id: 2, name: "Oskar Nyberg", email: "oskar@lindenphysio.com" },
+      { id: 1, name: "Karin Holm", email: "karin@lindenphysio.com", role: "owner" },
+      { id: 2, name: "Oskar Nyberg", email: "oskar@lindenphysio.com", role: "physio" },
     ])
     .onConflictDoNothing();
   // Rows from before staff had addresses.
-  await db.update(staff).set({ email: "karin@lindenphysio.com" }).where(eq(staff.id, 1));
+  await db.update(staff).set({ email: "karin@lindenphysio.com", role: "owner" }).where(eq(staff.id, 1));
   await db.update(staff).set({ email: "oskar@lindenphysio.com" }).where(eq(staff.id, 2));
 }
 
