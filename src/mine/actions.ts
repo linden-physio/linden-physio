@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { isAPIError } from "better-auth/api";
 import { auth } from "../../server/auth.ts";
 import { clinic } from "../../server/clinic.ts";
 
@@ -19,8 +20,17 @@ export async function sendBookingsLink(previous: LinkState, data: FormData): Pro
       body: { email: email.data, callbackURL: "/bookings", errorCallbackURL: "/bookings" },
       headers: await headers(),
     });
-  } catch {
-    return { kind: "invalid", message: "We can't send a link to that address. If you work here, sign in at /sign-in." };
+  } catch (error) {
+    // Refused on purpose: a staff address (see server/auth.ts).
+    if (isAPIError(error) && error.status === "FORBIDDEN") {
+      return {
+        kind: "invalid",
+        message: "We can't send a link to that address. If you work here, sign in at /sign-in.",
+      };
+    }
+    // Anything else: the mail couldn't be sent. Say so, and keep the reason in the server's log.
+    console.error(error);
+    return { kind: "invalid", message: "We couldn't send the email just now. Please try again later, or email us." };
   }
   return { kind: "sent", email: email.data };
 }
