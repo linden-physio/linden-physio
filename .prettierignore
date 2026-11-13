@@ -1,3 +1,2 @@
 package-lock.json
-src/api-types.ts
-public/mockServiceWorker.js
+server/migrations/

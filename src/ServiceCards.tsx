@@ -1,17 +1,17 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { services } from "./services";
 
-export const services = [
-  { id: "first-visit", length: 60, title: "First visit", line: "A full assessment and a plan for your treatment." },
-  { id: "follow-up", length: 30, title: "Follow-up", line: "We check your progress and adjust your exercises." },
-  { id: "sports-massage", length: 45, title: "Sports massage", line: "Deep work on tight or overworked muscles." },
-].map((s) => ({ ...s, name: s.title + ", " + s.length + " minutes" }));
-
-export function ServiceCards({ service, onChange }: { service: string; onChange: (service: string) => void }) {
+// Picking a service changes the address, and the server sends the page for that service.
+export function ServiceCards({ day, service }: { day: string; service: string }) {
+  const router = useRouter();
   return (
     <RadioGroup
       aria-label="Service"
       value={service}
-      onValueChange={(value) => onChange(String(value))}
+      onValueChange={(value) => router.push("/?day=" + day + "&service=" + value, { scroll: false })}
       className="grid grid-cols-1 gap-4 sm:grid-cols-3"
     >
       {services.map((s) => (

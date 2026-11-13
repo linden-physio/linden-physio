@@ -5,7 +5,7 @@ export type FormState =
   | { kind: "editing" }
   | { kind: "invalid"; message: string }
   | { kind: "sending" }
-  | { kind: "booked"; id: string; name: string; date: string; time: string }
+  | { kind: "booked"; id: string; name: string; date: string; time: string; with: string }
   | { kind: "cancelling" }
   | { kind: "cancelled"; date: string; time: string }
   | { kind: "failed"; message: string };
@@ -19,7 +19,17 @@ function messageFor(formState: FormState): string {
     case "sending":
       return "Sending your booking…";
     case "booked":
-      return "Booked: " + dayName(formState.date) + " " + clockTime(formState.time) + " for " + formState.name + ".";
+      return (
+        "Booked: " +
+        dayName(formState.date) +
+        " " +
+        clockTime(formState.time) +
+        " with " +
+        formState.with +
+        ", for " +
+        formState.name +
+        "."
+      );
     case "cancelling":
       return "Cancelling your booking…";
     case "cancelled":

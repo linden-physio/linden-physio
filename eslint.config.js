@@ -6,7 +6,7 @@ import jsxA11y from "eslint-plugin-jsx-a11y";
 import globals from "globals";
 
 export default defineConfig([
-  globalIgnores(["dist", "public/mockServiceWorker.js"]),
+  globalIgnores(["dist", ".next", "next-env.d.ts"]),
   {
     files: ["**/*.{ts,tsx}"],
     extends: [
@@ -22,6 +22,11 @@ export default defineConfig([
       // A label that wraps the kit's RadioGroupItem is labelling a control.
       "jsx-a11y/label-has-associated-control": ["error", { controlComponents: ["RadioGroupItem"], depth: 3 }],
     },
+  },
+  {
+    // The clinic's server runs in Node.
+    files: ["server/**/*.ts"],
+    languageOptions: { globals: globals.node },
   },
   {
     // The kit's Label passes htmlFor through from whoever uses it.

@@ -2,3 +2,6 @@ node_modules/
 dist/
 # Settings for this computer only. Never committed.
 *.local
+.next/
+next-env.d.ts
+*.tsbuildinfo

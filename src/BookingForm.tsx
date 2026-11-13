@@ -1,5 +1,6 @@
-import { useRef, useState, type FormEvent } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+"use client";
+
+import { startTransition, useActionState, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,7 +14,8 @@ import {
 import { dayName } from "./dayName";
 import { Field } from "./Field";
 import { Message, type FormState } from "./Message";
-import { cancelBooking, postBooking, type Booking } from "./api";
+import { cancelBooking } from "./api";
+import { book } from "./actions";
 import { afterCancel } from "./cancelling";
 import { clockTime } from "./clockTime";
 
@@ -21,42 +23,40 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-type Details = { name: string; email: string; date: string; time: string };
+// What the dialog shows, and the form's fields to send once it's confirmed.
+type Details = { name: string; email: string; date: string; time: string; data: FormData };
 
 export function BookingForm({
   date,
   picked,
   service,
   serviceId,
-  onBooked,
+  onSending,
+  onChanged,
 }: {
   date: string;
   picked: string | null;
   service: string;
   serviceId: string;
-  // Called when the free times have changed: after a booking, or when someone else got there first.
-  onBooked: () => void;
+  // Called when a booking is sent: the picked time is on its way, and gone from the free times after.
+  onSending: () => void;
+  // Called when the free times have changed after a cancel. (A booking changes them too, and the
+  // action's answer brings the new ones with it.)
+  onChanged: () => void;
 }) {
+  // The booking's state comes from the server action's answer; pending is true while it runs.
+  const [booking, bookAction, pending] = useActionState(book, { kind: "editing" });
+  // What the browser has to say itself: a time not picked yet, and cancelling.
   const [formState, setFormState] = useState<FormState>({ kind: "editing" });
-  const queryClient = useQueryClient();
-  // Sending a booking changes what's on the server. Whatever the answer, mark the day's free times as
-  // old, for every service, so that every component showing them asks again.
-  const booking = useMutation({
-    mutationFn: postBooking,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["free-times", date] }),
-  });
-  // Cancelling changes the server too. The booking may be on another day than the one on screen, so
-  // mark every day's free times as old.
-  const cancelling = useMutation({
-    mutationFn: cancelBooking,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["free-times"] }),
-  });
+  const shown: FormState = pending ? { kind: "sending" } : formState.kind !== "editing" ? formState : booking;
   // The booking being checked in the dialog, or null when the dialog is closed.
   const [checking, setChecking] = useState<Details | null>(null);
   // The confirmed booking, kept until the dialog has closed.
   const confirmed = useRef<Details | null>(null);
 
-  function book(event: FormEvent<HTMLFormElement>) {
+  // With JavaScript, check the booking in a dialog first. Without it, this never runs: the browser posts
+  // the form to the action itself.
+  function check(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     if (picked === null) {
@@ -65,7 +65,7 @@ export function BookingForm({
       setFormState({ kind: "invalid", message: "That day has already passed." });
     } else {
       setFormState({ kind: "editing" });
-      setChecking({ name: String(data.get("name")), email: String(data.get("email")), date, time: picked });
+      setChecking({ name: String(data.get("name")), email: String(data.get("email")), date, time: picked, data });
     }
   }
 
@@ -81,31 +81,17 @@ export function BookingForm({
     confirmed.current = null;
   }
 
-  async function send(details: Details) {
-    setFormState({ kind: "sending" });
-    const response = await booking.mutateAsync({
-      start: details.time,
-      service: serviceId,
-      name: details.name,
-      email: details.email,
-    });
-    if (response.ok) {
-      const made: Booking = await response.json();
-      setFormState({ kind: "booked", id: made.id, name: details.name, date: details.date, time: details.time });
-      onBooked();
-    } else if (response.status === 409) {
-      setFormState({ kind: "failed", message: "Someone just booked that time. Please pick another." });
-      onBooked();
-    } else {
-      setFormState({ kind: "failed", message: "We couldn't take your booking. Please try again." });
-    }
+  function send(details: Details) {
+    onSending();
+    startTransition(() => bookAction(details.data));
   }
 
   async function cancel(booked: { id: string; date: string; time: string }) {
     setFormState({ kind: "cancelling" });
     try {
-      const response = await cancelling.mutateAsync(booked.id);
+      const response = await cancelBooking(booked.id);
       setFormState(afterCancel(response.status, booked));
+      if (response.ok) onChanged();
     } catch {
       // No answer at all: the network or the server is down.
       setFormState(afterCancel(0, booked));
@@ -113,7 +99,9 @@ export function BookingForm({
   }
 
   return (
-    <form id="details" onSubmit={book} className="flex flex-col gap-4">
+    <form id="details" action={bookAction} onSubmit={check} className="flex flex-col gap-4">
+      <input type="hidden" name="service" value={serviceId} />
+      <input type="hidden" name="date" value={date} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Your name" id="name" name="name" required autoComplete="name" />
         <Field label="Email" id="email" name="email" type="email" required autoComplete="email" />
@@ -144,9 +132,9 @@ export function BookingForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Message formState={formState} />
-      {formState.kind === "booked" && (
-        <Button type="button" variant="outline" className="sm:self-start" onClick={() => cancel(formState)}>
+      <Message formState={shown} />
+      {shown.kind === "booked" && (
+        <Button type="button" variant="outline" className="sm:self-start" onClick={() => cancel(shown)}>
           Cancel this booking
         </Button>
       )}
