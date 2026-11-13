@@ -46,7 +46,7 @@ test("someone signed in from their link can cancel only their own bookings", asy
   await seed(db);
   t.after(() => db.$client.end());
 
-  const clinic = makeClinic(db, () => new Date("2026-11-09T18:00:00.000Z"));
+  const clinic = makeClinic(db, "linden", () => new Date("2026-11-09T18:00:00.000Z"));
   const book = (email: string) =>
     clinic.book({ start: "2026-11-10T09:00:00.000Z", service: "follow-up", name: "Someone", email });
   const maja = await book("maja@example.com");

@@ -99,6 +99,13 @@
       "when": 1794552530484,
       "tag": "0013_give_every_row_a_business",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794552644512,
+      "tag": "0014_say_what_each_business_offers_and_how_its_staff_sign_in",
+      "breakpoints": true
     }
   ]
 }

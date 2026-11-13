@@ -2,8 +2,7 @@
 
 import { refresh, updateTag } from "next/cache";
 import { z } from "zod";
-import { clinic } from "../server/clinic.ts";
-import { services } from "./services";
+import { clinicHere } from "./business";
 import type { FormState } from "./Message";
 
 // What a booking form must hold. The checks in the browser can be skipped: anyone can post to the
@@ -12,7 +11,7 @@ const BookingFields = z.object({
   time: z.iso.datetime({ error: "Pick a time first." }).refine((time) => Date.parse(time) > Date.now(), {
     error: "That time has already passed.",
   }),
-  service: z.string().refine((id) => services.some((s) => s.id === id), { error: "Pick a service." }),
+  service: z.string().min(1, { error: "Pick a service." }),
   date: z.iso.date(),
   name: z.string().trim().min(1, { error: "Write your name." }),
   email: z.email({ error: "Write an email address we can reach you at." }),
@@ -25,13 +24,15 @@ export async function book(previous: FormState, data: FormData): Promise<FormSta
   const fields = BookingFields.safeParse(Object.fromEntries(data));
   if (!fields.success) return { kind: "invalid", message: fields.error.issues[0].message };
   const { time, service, date, name, email } = fields.data;
-  const booked = await clinic().book({ start: time, service, name, email });
+  const clinic = await clinicHere();
+  const booked = await clinic.book({ start: time, service, name, email });
   if (booked.kind === "taken") {
     updateTag("free-times");
     refresh();
     return { kind: "failed", message: "Someone just booked that time. Please pick another." };
   }
   if (booked.kind === "passed") return { kind: "invalid", message: "That time has already passed." };
+  if (booked.kind === "no-service") return { kind: "invalid", message: "Pick a service." };
   if (booked.kind !== "booked") return { kind: "failed", message: "We couldn't take your booking. Please try again." };
   // The free times have changed: forget the kept ones, and send the page's new free times back with the
   // answer. updateTag makes the next request wait for fresh times, so this answer has them.

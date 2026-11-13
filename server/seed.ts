@@ -10,11 +10,51 @@ export async function seed(db: NodePgDatabase) {
   await db
     .insert(services)
     .values([
-      { id: "first-visit", businessId: "linden", title: "First visit", minutes: 60, priceSek: 950 },
-      { id: "follow-up", businessId: "linden", title: "Follow-up", minutes: 30, priceSek: 650 },
-      { id: "sports-massage", businessId: "linden", title: "Sports massage", minutes: 45, priceSek: 750 },
-      { id: "cut", businessId: "birch", title: "Cut", minutes: 45, priceSek: 690 },
-      { id: "cut-and-colour", businessId: "birch", title: "Cut and colour", minutes: 120, priceSek: 1850 },
+      {
+        id: "first-visit",
+        businessId: "linden",
+        title: "First visit",
+        minutes: 60,
+        priceSek: 950,
+        line: "A full assessment and a plan for your treatment.",
+        position: 1,
+      },
+      {
+        id: "follow-up",
+        businessId: "linden",
+        title: "Follow-up",
+        minutes: 30,
+        priceSek: 650,
+        line: "We check your progress and adjust your exercises.",
+        position: 2,
+      },
+      {
+        id: "sports-massage",
+        businessId: "linden",
+        title: "Sports massage",
+        minutes: 45,
+        priceSek: 750,
+        line: "Deep work on tight or overworked muscles.",
+        position: 3,
+      },
+      {
+        id: "cut",
+        businessId: "birch",
+        title: "Cut",
+        minutes: 45,
+        priceSek: 690,
+        line: "A wash, a cut and a blow-dry.",
+        position: 1,
+      },
+      {
+        id: "cut-and-colour",
+        businessId: "birch",
+        title: "Cut and colour",
+        minutes: 120,
+        priceSek: 1850,
+        line: "Colour all over, then a cut and a blow-dry.",
+        position: 2,
+      },
     ])
     .onConflictDoNothing();
   await db

@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Field } from "../Field";
 import { sendBookingsLink } from "./actions";
 
-// Ask for a link to your bookings.
-export function LinkForm() {
+// Ask for a link that signs you in: by default to your bookings.
+export function LinkForm({ next = "/bookings" }: { next?: "/bookings" | "/staff" }) {
   const [state, action, pending] = useActionState(sendBookingsLink, { kind: "idle" });
   return (
     <form action={action} className="flex max-w-md flex-col gap-4">
+      <input type="hidden" name="next" value={next} />
       <Field label="Email" id="email" name="email" type="email" required autoComplete="email" />
       <Button type="submit" disabled={pending} className="sm:self-start">
         Send me a link

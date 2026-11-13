@@ -4,7 +4,6 @@ import { createContext, use, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Summary } from "./Summary";
 import { BookingForm } from "./BookingForm";
-import { services } from "./services";
 
 // The time the visitor picked, for the time chips deeper down, which the server makes.
 const Picked = createContext<{ picked: string | null; pick: (time: string) => void }>({
@@ -19,17 +18,19 @@ export const usePicked = () => use(Picked);
 export function Booking({
   date,
   serviceId,
+  serviceName,
   days,
   times,
 }: {
   date: string;
   serviceId: string;
+  // Like "Follow-up, 30 minutes".
+  serviceName: string;
   days: ReactNode;
   times: ReactNode;
 }) {
   const [picked, setPicked] = useState<string | null>(null);
   const router = useRouter();
-  const service = services.find((s) => s.id === serviceId)!;
 
   // The free times have changed on the server: ask it for this page again. What's on screen here, like
   // the message under the form, stays.
@@ -56,11 +57,11 @@ export function Booking({
         <h2 id="details-heading" className="text-title">
           Your booking
         </h2>
-        <Summary date={date} picked={picked} service={service.name} />
+        <Summary date={date} picked={picked} service={serviceName} />
         <BookingForm
           date={date}
           picked={picked}
-          service={service.name}
+          service={serviceName}
           serviceId={serviceId}
           onSending={() => setPicked(null)}
           onChanged={changed}

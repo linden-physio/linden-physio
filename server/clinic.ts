@@ -2,7 +2,7 @@ import pg from "pg";
 import { and, eq, gt, gte, lt, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { bookings, openingHours, services, staff } from "./schema.ts";
+import { bookings, businesses, openingHours, services, staff } from "./schema.ts";
 import type { FreeTimes, NewBooking } from "./schemas.ts";
 import { toInstant, fromInstant } from "./clock.ts";
 import { freeTimes, nearestFreeTime, type Booking, type OpeningHours } from "./slots.ts";
@@ -48,6 +48,9 @@ export type Booked =
   | { kind: "no-service" };
 export type Cancelled = "cancelled" | "started" | "missing";
 
+// One of the things a business offers.
+export type Service = { id: string; title: string; minutes: number; priceSek: number; line: string };
+
 // One of someone's own bookings, on their page.
 export type OwnBooking = { id: string; startsAt: string; service: string; with: string };
 
@@ -56,15 +59,53 @@ export type Visit = { id: string; start: string; end: string; name: string; serv
 // A day at the clinic, for the staff: each physiotherapist's bookings, and the opening hours.
 export type Day = { hours: OpeningHours; people: { id: number; name: string; visits: Visit[] }[] };
 
-// What the clinic can do, with the given database. now() is the time; the tests give it a fixed one.
-// The pages and the server actions call these functions directly; the routes in routes.ts answer
-// HTTP requests with them.
-export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date()) {
-  // The clinic's opening hours, by weekday (0 is Sunday). A day with no row is closed.
+// The one way into a business's data. It takes the business first, and every query in it asks only
+// for that business's rows, so no page or route can forget to. now() is the time; the tests give it a
+// fixed one. The pages and the server actions call these functions directly; the routes in routes.ts
+// answer HTTP requests with them.
+export function makeClinic(db: NodePgDatabase, business: string, now: () => Date = () => new Date()) {
+  const ofBusiness = {
+    bookings: eq(bookings.businessId, business),
+    staff: eq(staff.businessId, business),
+    services: eq(services.businessId, business),
+    openingHours: eq(openingHours.businessId, business),
+  };
+
+  // The business's name and address, as its pages show them, and how its staff sign in.
+  async function about(): Promise<{ id: string; name: string; email: string; staffSignIn: string }> {
+    const [row] = await db
+      .select({
+        id: businesses.id,
+        name: businesses.name,
+        email: businesses.email,
+        staffSignIn: businesses.staffSignIn,
+      })
+      .from(businesses)
+      .where(eq(businesses.id, business));
+    if (!row) throw new Error("No such business: " + business);
+    return row;
+  }
+
+  // What the business offers, in the order its page lists them.
+  async function offers(): Promise<Service[]> {
+    return db
+      .select({
+        id: services.id,
+        title: services.title,
+        minutes: services.minutes,
+        priceSek: services.priceSek,
+        line: services.line,
+      })
+      .from(services)
+      .where(ofBusiness.services)
+      .orderBy(services.position);
+  }
+
+  // The opening hours, by weekday (0 is Sunday). A day with no row is closed.
   async function hoursByWeekday(): Promise<Record<number, OpeningHours>> {
     const hours: Record<number, OpeningHours> = {};
     for (let weekday = 0; weekday < 7; weekday++) hours[weekday] = "closed";
-    for (const row of await db.select().from(openingHours)) {
+    for (const row of await db.select().from(openingHours).where(ofBusiness.openingHours)) {
       hours[row.weekday] = { open: row.opens.slice(0, 5), close: row.closes.slice(0, 5) };
     }
     return hours;
@@ -72,7 +113,10 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
 
   // How long a service takes, or null if there's no such service.
   async function minutesFor(service: string): Promise<number | null> {
-    const [row] = await db.select().from(services).where(eq(services.id, service));
+    const [row] = await db
+      .select()
+      .from(services)
+      .where(and(eq(services.id, service), ofBusiness.services));
     return row ? row.minutes : null;
   }
 
@@ -81,7 +125,7 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
     // By id, so a time's names always come in the same order, and booking tries people in that order.
     const [hours, people, booked] = await Promise.all([
       hoursByWeekday(),
-      db.select().from(staff).orderBy(staff.id),
+      db.select().from(staff).where(ofBusiness.staff).orderBy(staff.id),
       bookingsFrom(date),
     ]);
     return {
@@ -102,6 +146,7 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
       .from(bookings)
       .where(
         and(
+          ofBusiness.bookings,
           gte(bookings.startsAt, toInstant(date, "00:00")),
           lt(bookings.startsAt, toInstant(addDays(date, 15), "00:00")),
         ),
@@ -150,7 +195,7 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
         const [made] = await db
           .insert(bookings)
           .values({
-            businessId: person.businessId,
+            businessId: business,
             startsAt: toInstant(date, time),
             endsAt: toInstant(date, addMinutes(time, length)),
             service: booking.service,
@@ -175,6 +220,7 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
   // signed in from their link can cancel their own bookings and no one else's.
   async function cancel(id: string, email?: string): Promise<Cancelled> {
     const ours = and(
+      ofBusiness.bookings,
       eq(bookings.publicId, id),
       email === undefined ? undefined : sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`,
     );
@@ -193,7 +239,7 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
   async function day(date: string): Promise<Day> {
     const [hours, people, visits] = await Promise.all([
       hoursByWeekday(),
-      db.select().from(staff).orderBy(staff.id),
+      db.select().from(staff).where(ofBusiness.staff).orderBy(staff.id),
       db
         .select({
           staffId: bookings.staffId,
@@ -208,6 +254,7 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
         .innerJoin(services, eq(bookings.service, services.id))
         .where(
           and(
+            ofBusiness.bookings,
             gte(bookings.startsAt, toInstant(date, "00:00")),
             lt(bookings.startsAt, toInstant(addDays(date, 1), "00:00")),
           ),
@@ -232,7 +279,11 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
       .innerJoin(services, eq(bookings.service, services.id))
       .innerJoin(staff, eq(bookings.staffId, staff.id))
       .where(
-        and(sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`, gt(bookings.startsAt, now().toISOString())),
+        and(
+          ofBusiness.bookings,
+          sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`,
+          gt(bookings.startsAt, now().toISOString()),
+        ),
       )
       .orderBy(bookings.startsAt);
     return rows.map((row) => ({ ...row, startsAt: new Date(row.startsAt).toISOString(), with: firstName(row.with) }));
@@ -240,12 +291,15 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
 
   // Which physiotherapist a booking is with, or null if there's no such booking.
   async function bookedWith(id: string): Promise<number | null> {
-    const [row] = await db.select({ staffId: bookings.staffId }).from(bookings).where(eq(bookings.publicId, id));
+    const [row] = await db
+      .select({ staffId: bookings.staffId })
+      .from(bookings)
+      .where(and(ofBusiness.bookings, eq(bookings.publicId, id)));
     return row?.staffId ?? null;
   }
 
-  return { freeTimesOn, book, cancel, day, bookingsFor, bookedWith };
+  return { about, offers, freeTimesOn, book, cancel, day, bookingsFor, bookedWith };
 }
 
-// The clinic, with the database from the environment.
-export const clinic = () => makeClinic(db());
+// A business, with the database from the environment.
+export const clinic = (business: string) => makeClinic(db(), business);

@@ -5,28 +5,37 @@ import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import * as schema from "./auth-schema.ts";
-import { staff } from "./schema.ts";
+import { businesses, staff } from "./schema.ts";
+import { businessFor } from "./businesses.ts";
 import { db } from "./db.ts";
 import { setting } from "./env.ts";
 import { sendMail } from "./mail.ts";
 
-// Whether an address belongs to a member of staff.
-async function isStaff(email: string | undefined): Promise<boolean> {
+// How the member of staff with an address signs in ("microsoft" or "email"), or null for an address
+// that isn't on any business's staff.
+async function staffSignIn(email: string | undefined): Promise<string | null> {
   const [member] = await db()
-    .select({ id: staff.id })
+    .select({ signIn: businesses.staffSignIn })
     .from(staff)
+    .innerJoin(businesses, eq(staff.businessId, businesses.id))
     .where(eq(staff.email, email?.trim().toLowerCase() ?? ""));
-  return member !== undefined;
+  return member?.signIn ?? null;
 }
 
-// Signing in, by Better Auth. Two kinds of people sign in. The people who book get a link by email
-// (the magic-link plugin), which shows them their bookings. The staff sign in with their work account in the clinic's Microsoft
+// Signing in, by Better Auth. The people who book get a link by email (the magic-link plugin), which
+// shows them their bookings, and so do the staff of a business without work accounts, like Birch Hair
+// Studio. Linden's staff sign in with their work account in the clinic's Microsoft
 // Entra ID (its tenant): Better Auth sends them to Microsoft, Microsoft sends them back with a code,
 // and Better Auth swaps the code for an ID token that says who they are. Then it starts a session, as
 // our own code did: a row in the session table, and a cookie with its token.
 function makeAuth() {
   return betterAuth({
-    baseURL: setting("BETTER_AUTH_URL"),
+    // Each business's pages are at their own address, and the links in Better Auth's mail and its
+    // redirects must go back to the one the request came to. These are the addresses it may use.
+    baseURL: {
+      allowedHosts: setting("BETTER_AUTH_HOSTS").split(","),
+      fallback: setting("BETTER_AUTH_URL"),
+    },
     // Signs the session cookie, and encrypts what Microsoft gave us. Keep it secret, like a password.
     secret: setting("BETTER_AUTH_SECRET"),
     database: drizzleAdapter(db(), { provider: "pg", schema }),
@@ -52,16 +61,16 @@ function makeAuth() {
     // they sign in.
     user: {
       validateUserInfo: async ({ user }, ctx) => {
-        if (ctx.path.startsWith("/callback/") && !(await isStaff(user.email))) {
+        if (ctx.path.startsWith("/callback/") && (await staffSignIn(user.email)) !== "microsoft") {
           return { error: "not_staff", errorDescription: "Only the clinic's staff can sign in here." };
         }
       },
     },
-    // And the other way round: a staff address gets no link by email. Staff sign in only through
+    // And the other way round: a Linden staff address gets no link by email. They sign in only through
     // Microsoft, so turning off their Microsoft account is enough to keep them out.
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
-        if (ctx.path === "/sign-in/magic-link" && (await isStaff(ctx.body?.email))) {
+        if (ctx.path === "/sign-in/magic-link" && (await staffSignIn(ctx.body?.email)) === "microsoft") {
           throw new APIError("FORBIDDEN", { message: "Staff sign in with their work account." });
         }
       }),
@@ -78,14 +87,23 @@ function makeAuth() {
         expiresIn: 15 * 60,
         storeToken: "hashed",
         sendMagicLink: async ({ email, url }) => {
+          // From the business whose address the link is for.
+          const business = await businessFor(db(), new URL(url).host);
+          const [{ name, email: from }] = await db()
+            .select({ name: businesses.name, email: businesses.email })
+            .from(businesses)
+            .where(eq(businesses.id, business));
           await sendMail({
+            from: name + " <" + from + ">",
             to: email,
-            subject: "Your bookings at Linden Physio",
+            subject: "Your link to " + name,
             text:
-              "Open this link to see your bookings at Linden Physio:\n\n" +
+              "Open this link to sign in to " +
+              name +
+              ":\n\n" +
               url +
               "\n\nIt works once, for 15 minutes. If you didn't ask for it, you can ignore this email.\n",
-            html: `<p>Open this link to see your bookings at Linden Physio:</p><p><a href="${url}">See my bookings</a></p><p>It works once, for 15 minutes. If you didn't ask for it, you can ignore this email.</p>`,
+            html: `<p>Open this link to sign in to ${name}:</p><p><a href="${url}">Sign in</a></p><p>It works once, for 15 minutes. If you didn't ask for it, you can ignore this email.</p>`,
           });
         },
       }),

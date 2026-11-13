@@ -2,15 +2,17 @@ import "server-only";
 import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { auth } from "../server/auth.ts";
 import { db } from "../server/db.ts";
 import { staff } from "../server/schema.ts";
+import { here } from "./business";
 
 export type Staff = { id: number; name: string; email: string; role: string };
 
-// Whoever is signed in on this request, as a member of staff, or null. Better Auth checks the session
-// cookie against its session table; the address it signed in with says which member of staff it is.
+// Whoever is signed in on this request, as a member of staff of the business at this address, or
+// null. Better Auth checks the session cookie against its session table; the address it signed in
+// with says which member of staff it is.
 // Read once for each request, however many parts of the page ask.
 export const signedIn = cache(async (): Promise<Staff | null> => {
   // The headers first: they tell next build that this runs for each request, before auth() needs
@@ -21,7 +23,7 @@ export const signedIn = cache(async (): Promise<Staff | null> => {
   const [row] = await db()
     .select({ id: staff.id, name: staff.name, role: staff.role })
     .from(staff)
-    .where(eq(staff.email, session.user.email.toLowerCase()));
+    .where(and(eq(staff.email, session.user.email.toLowerCase()), eq(staff.businessId, await here())));
   // Signed in, but not (or no longer) on the staff.
   if (!row) return null;
   return { ...row, email: session.user.email };

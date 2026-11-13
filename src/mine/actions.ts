@@ -6,18 +6,20 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isAPIError } from "better-auth/api";
 import { auth } from "../../server/auth.ts";
-import { clinic } from "../../server/clinic.ts";
+import { clinicHere } from "../business";
 
 export type LinkState = { kind: "idle" } | { kind: "sent"; email: string } | { kind: "invalid"; message: string };
 
-// Email a link to the bookings made with an address. Whoever owns the inbox can open it; nobody else
+// Email a link that signs someone in: to their bookings (/bookings), or, for the staff of a business
+// that signs in by email, to the day page (/staff). Whoever owns the inbox can open it; nobody else
 // learns anything, so the answer is the same whether or not there are bookings for that address.
 export async function sendBookingsLink(previous: LinkState, data: FormData): Promise<LinkState> {
   const email = z.email().safeParse(data.get("email"));
-  if (!email.success) return { kind: "invalid", message: "Write the email address you booked with." };
+  if (!email.success) return { kind: "invalid", message: "Write your email address." };
+  const next = data.get("next") === "/staff" ? "/staff" : "/bookings";
   try {
     await auth().api.signInMagicLink({
-      body: { email: email.data, callbackURL: "/bookings", errorCallbackURL: "/bookings" },
+      body: { email: email.data, callbackURL: next, errorCallbackURL: next === "/staff" ? "/sign-in" : "/bookings" },
       headers: await headers(),
     });
   } catch (error) {
@@ -48,7 +50,7 @@ export async function cancelOwn(previous: CancelState, data: FormData): Promise<
   if (!session) redirect("/bookings");
   const id = z.uuid().safeParse(data.get("id"));
   if (!id.success) return { kind: "failed", message: "We couldn't find that booking." };
-  const cancelled = await clinic().cancel(id.data, session.user.email);
+  const cancelled = await (await clinicHere()).cancel(id.data, session.user.email);
   if (cancelled === "started") return { kind: "failed", message: "That booking has already started. Please email us." };
   if (cancelled === "missing")
     return { kind: "failed", message: "We couldn't find that booking. It may be cancelled already." };

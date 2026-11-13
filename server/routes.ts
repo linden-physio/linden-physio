@@ -4,6 +4,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { z } from "zod";
 import { BookingId, FreeTimesQuery, NewBooking } from "./schemas.ts";
 import { makeClinic } from "./clinic.ts";
+import { businessFor } from "./businesses.ts";
 
 // A 400 answer that names each field that failed, and why.
 function problems(error: z.ZodError) {
@@ -15,17 +16,21 @@ function problems(error: z.ZodError) {
 
 // The server's addresses, talking to the given database. The page that calls them comes from the same
 // origin, so the browser needs no permission (no CORS). What each one does is in clinic.ts; here it's
-// only HTTP: reading the request and writing the answer.
+// only HTTP: reading the request and writing the answer. Each request is for the business at the
+// address it was sent to.
 export function makeApp(db: NodePgDatabase, now: () => Date = () => new Date()) {
-  const clinic = makeClinic(db, now);
-  const app = new Hono();
+  const app = new Hono<{ Variables: { clinic: ReturnType<typeof makeClinic> } }>();
   app.use(logger());
+  app.use(async (c, next) => {
+    c.set("clinic", makeClinic(db, await businessFor(db, c.req.header("host") ?? null), now));
+    await next();
+  });
 
   app.get("/free-times", async (c) => {
     const query = FreeTimesQuery.safeParse(c.req.query());
     if (!query.success) return c.json(problems(query.error), 400);
     const { date, service } = query.data;
-    const answer = await clinic.freeTimesOn(date, service);
+    const answer = await c.var.clinic.freeTimesOn(date, service);
     if (answer === null) return c.json({ error: "No such service: " + service }, 400);
     return c.json(answer);
   });
@@ -33,7 +38,7 @@ export function makeApp(db: NodePgDatabase, now: () => Date = () => new Date()) 
   app.post("/bookings", async (c) => {
     const parsed = NewBooking.safeParse(await c.req.json());
     if (!parsed.success) return c.json(problems(parsed.error), 400);
-    const booked = await clinic.book(parsed.data);
+    const booked = await c.var.clinic.book(parsed.data);
     if (booked.kind === "no-service") return c.json({ error: "No such service: " + parsed.data.service }, 400);
     if (booked.kind === "passed") return c.json({ error: "That time has already passed." }, 409);
     if (booked.kind === "taken") return c.json({ error: "That time is no longer free." }, 409);
@@ -43,7 +48,7 @@ export function makeApp(db: NodePgDatabase, now: () => Date = () => new Date()) 
   app.delete("/bookings/:id", async (c) => {
     const id = BookingId.safeParse(c.req.param("id"));
     if (!id.success) return c.json(problems(id.error), 400);
-    const cancelled = await clinic.cancel(id.data);
+    const cancelled = await c.var.clinic.cancel(id.data);
     if (cancelled === "cancelled") return c.body(null, 204);
     if (cancelled === "started") return c.json({ error: "This booking has already started." }, 409);
     return c.json({ error: "There is no such booking." }, 404);

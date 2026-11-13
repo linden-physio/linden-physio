@@ -11,6 +11,8 @@ export const businesses = pgTable("businesses", {
   email: text().notNull(),
   // The addresses its pages are at, like "lindenphysio.com".
   hosts: text().array().notNull(),
+  // How its staff sign in: "microsoft" (a work account in its Entra ID) or "email" (a link).
+  staffSignIn: text("staff_sign_in").notNull().default("email"),
 });
 
 const businessId = () =>
@@ -57,6 +59,10 @@ export const services = pgTable("services", {
   title: text().notNull(),
   minutes: integer().notNull(),
   priceSek: integer("price_sek").notNull(),
+  // One line about it, under its name on the booking page.
+  line: text().notNull().default(""),
+  // Where it comes in the list.
+  position: integer().notNull().default(0),
 });
 
 // One row for each day a business is open. 0 is Sunday. A day with no row is closed.

@@ -5,7 +5,7 @@ import { refresh, updateTag } from "next/cache";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { auth } from "../server/auth.ts";
-import { clinic } from "../server/clinic.ts";
+import { clinicHere } from "./business";
 import { may } from "../server/permissions.ts";
 import { staffOnly } from "./session";
 
@@ -30,9 +30,10 @@ export async function signOut() {
 export async function cancelVisit(data: FormData) {
   const who = await staffOnly();
   const id = z.uuid().parse(data.get("id"));
-  const staffId = await clinic().bookedWith(id);
+  const clinic = await clinicHere();
+  const staffId = await clinic.bookedWith(id);
   if (staffId === null || !may(who, { do: "cancel", staffId })) return;
-  await clinic().cancel(id);
+  await clinic.cancel(id);
   updateTag("free-times");
   refresh();
 }

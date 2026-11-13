@@ -3,14 +3,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { auth } from "../../../../server/auth.ts";
-import { clinic } from "../../../../server/clinic.ts";
+import { clinicHere } from "../../../business";
 import { dayName } from "../../../dayName";
 import { clockTime } from "../../../clockTime";
 import { LinkForm } from "../../../mine/LinkForm";
 import { forgetMe } from "../../../mine/actions";
 import { CancelButton } from "../../../mine/CancelButton";
 
-export const metadata: Metadata = { title: "Your bookings · Linden Physio" };
+import { about, here } from "../../../business";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: "Your bookings · " + (await about(await here())).name };
+}
 
 // The bookings of whoever followed the link from their email. Anyone else is asked for their address.
 export default function YourBookings({ searchParams }: PageProps<"/bookings">) {
@@ -19,7 +23,9 @@ export default function YourBookings({ searchParams }: PageProps<"/bookings">) {
       <header>
         <p className="mb-2">
           <Link href="/" className="text-brand-700 underline">
-            Linden Physio
+            <Suspense fallback="Book a time">
+              <Name />
+            </Suspense>
           </Link>
         </p>
         <h1 className="text-display">Your bookings</h1>
@@ -51,7 +57,7 @@ async function Bookings({ searchParams }: Pick<PageProps<"/bookings">, "searchPa
       </section>
     );
   }
-  const booked = await clinic().bookingsFor(session.user.email);
+  const booked = await (await clinicHere()).bookingsFor(session.user.email);
   return (
     <section className="flex flex-col gap-4">
       <p className="text-ink-600">For {session.user.email}</p>
@@ -94,4 +100,8 @@ async function Bookings({ searchParams }: Pick<PageProps<"/bookings">, "searchPa
       </form>
     </section>
   );
+}
+
+async function Name() {
+  return (await about(await here())).name;
 }

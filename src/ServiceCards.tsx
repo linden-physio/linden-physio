@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { services } from "./services";
+import type { Service } from "../server/clinic.ts";
 
 // Picking a service changes the address, and the server sends the page for that service.
-export function ServiceCards({ day, service }: { day: string; service: string }) {
+export function ServiceCards({ day, service, services }: { day: string; service: string; services: Service[] }) {
   const router = useRouter();
   return (
     <RadioGroup
@@ -21,13 +21,13 @@ export function ServiceCards({ day, service }: { day: string; service: string })
   );
 }
 
-function ServiceCard({ service }: { service: (typeof services)[number] }) {
+function ServiceCard({ service }: { service: Service }) {
   return (
     <label className="flex cursor-pointer gap-3 rounded-md border border-line-200 bg-surface p-4 has-data-checked:border-2 has-data-checked:border-brand-600 has-data-checked:p-[15px]">
       <RadioGroupItem value={service.id} className="mt-1" />
       <span>
         <span className="block font-semibold">{service.title}</span>
-        <span className="block text-sm text-ink-600">{service.length} minutes</span>
+        <span className="block text-sm text-ink-600">{service.minutes} minutes</span>
         <span className="mt-2 block text-sm">{service.line}</span>
       </span>
     </label>

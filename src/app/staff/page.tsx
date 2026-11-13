@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { z } from "zod";
-import { clinic } from "../../../server/clinic.ts";
+import { clinicHere } from "../../business";
 import { fromInstant } from "../../../server/clock.ts";
 import { DayView } from "../../staff/DayView";
 import { staffOnly } from "../../session";
@@ -25,5 +25,5 @@ async function Day({ searchParams }: Pick<PageProps<"/staff">, "searchParams">) 
   const who = await staffOnly();
   const parsed = Choice.safeParse(await searchParams);
   const date = (parsed.success && parsed.data.day) || fromInstant(new Date().toISOString()).date;
-  return <DayView date={date} day={await clinic().day(date)} who={who} />;
+  return <DayView date={date} day={await (await clinicHere()).day(date)} who={who} />;
 }
