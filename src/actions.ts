@@ -31,6 +31,7 @@ export async function book(previous: FormState, data: FormData): Promise<FormSta
     refresh();
     return { kind: "failed", message: "Someone just booked that time. Please pick another." };
   }
+  if (booked.kind === "passed") return { kind: "invalid", message: "That time has already passed." };
   if (booked.kind !== "booked") return { kind: "failed", message: "We couldn't take your booking. Please try again." };
   // The free times have changed: forget the kept ones, and send the page's new free times back with the
   // answer. updateTag makes the next request wait for fresh times, so this answer has them.

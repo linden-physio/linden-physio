@@ -35,6 +35,7 @@ export function makeApp(db: NodePgDatabase, now: () => Date = () => new Date()) 
     if (!parsed.success) return c.json(problems(parsed.error), 400);
     const booked = await clinic.book(parsed.data);
     if (booked.kind === "no-service") return c.json({ error: "No such service: " + parsed.data.service }, 400);
+    if (booked.kind === "passed") return c.json({ error: "That time has already passed." }, 409);
     if (booked.kind === "taken") return c.json({ error: "That time is no longer free." }, 409);
     return c.json({ id: booked.id, startsAt: booked.startsAt }, 201);
   });
