@@ -2,7 +2,7 @@ import pg from "pg";
 import { and, eq, gt, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import type { NodePgDatabase, NodePgTransaction } from "drizzle-orm/node-postgres";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { bookings, businesses, openingHours, services, staff } from "./schema.ts";
+import { bookings, businesses, holdsMade, openingHours, services, staff } from "./schema.ts";
 import type { FreeTimes, NewBooking } from "./schemas.ts";
 import { toInstant, fromInstant } from "./clock.ts";
 import { freeTimes, nearestFreeTime, type Booking, type OpeningHours } from "./slots.ts";
@@ -44,11 +44,16 @@ function earliest(answers: ({ date: string; time: string } | null)[]) {
 // How long a new booking is held for the person to open the link we email them: as long as the link
 // works.
 export const HOLD_MINUTES = 15;
+// How many holds one email address may have waiting at a time, and how many one internet address may
+// make in an hour. A family can book for each other from one home; a bot that fills the book can't.
+export const HOLDS_PER_EMAIL = 2;
+export const HOLDS_PER_ADDRESS_PER_HOUR = 10;
 
 // A new booking is held, not booked: it counts once the person opens the link in the email.
 export type Booked =
   | { kind: "held"; id: string; startsAt: string; with: string; heldUntil: string }
   | { kind: "taken" }
+  | { kind: "too-many"; per: "email" | "address" }
   | { kind: "passed" }
   | { kind: "no-service" };
 export type Cancelled = "cancelled" | "started" | "missing";
@@ -194,13 +199,49 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     };
   }
 
-  async function book(booking: NewBooking): Promise<Booked> {
+  // How many holds there are that nobody has confirmed yet, for an email address.
+  async function waitingFor(email: string): Promise<number> {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(bookings)
+      .where(
+        and(
+          ofBusiness.bookings,
+          sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`,
+          isNull(bookings.confirmedAt),
+          gt(bookings.heldUntil, now().toISOString()),
+        ),
+      );
+    return count;
+  }
+
+  // How many holds an internet address has made in the last hour.
+  async function heldFrom(from: string): Promise<number> {
+    const hourAgo = new Date(now().getTime() - 60 * 60_000).toISOString();
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(holdsMade)
+      .where(and(eq(holdsMade.businessId, business), eq(holdsMade.madeFrom, from), gt(holdsMade.madeAt, hourAgo)));
+    return count;
+  }
+
+  // from is the internet address the request came from.
+  async function book(booking: NewBooking, from: string): Promise<Booked> {
     // Checked here, not only in the form's action, because /api/bookings takes bookings too, and
     // anyone can post to it with any time.
     if (Date.parse(booking.start) <= now().getTime()) return { kind: "passed" };
     const { date, time } = fromInstant(booking.start);
     const length = await minutesFor(booking.service);
     if (length === null) return { kind: "no-service" };
+    // Count, then hold: another request from the same address or email can count between the two, and
+    // a bot that sends thirty at once gets them all counted before any is held. So the requests from one
+    // internet address, and for one email, wait for each other here, until this transaction ends.
+    await db.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"holds from " + business + " " + from}))`);
+    await db.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${"holds for " + business + " " + booking.email.trim().toLowerCase()}))`,
+    );
+    if ((await waitingFor(booking.email)) >= HOLDS_PER_EMAIL) return { kind: "too-many", per: "email" };
+    if ((await heldFrom(from)) >= HOLDS_PER_ADDRESS_PER_HOUR) return { kind: "too-many", per: "address" };
     // Holds whose time is up still sit in the table, and its rule against overlaps still sees them.
     // Clear them out first, so their times can be taken.
     await db
@@ -230,6 +271,8 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
             })
             .returning({ id: bookings.publicId, heldUntil: bookings.heldUntil }),
         );
+        // Counted against the address, even after the hold is confirmed, or runs out and is deleted.
+        await db.insert(holdsMade).values({ businessId: business, madeFrom: from, madeAt: now().toISOString() });
         // The id is what the person who booked cancels with.
         return {
           kind: "held",

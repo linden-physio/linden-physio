@@ -120,6 +120,13 @@
       "when": 1794553532135,
       "tag": "0016_hold_each_booking_until_the_email_link_is_opened",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794553996660,
+      "tag": "0017_count_the_holds_from_each_address",
+      "breakpoints": true
     }
   ]
 }

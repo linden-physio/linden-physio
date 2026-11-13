@@ -20,7 +20,7 @@ test("a hold nobody confirms lets its time go after 15 minutes, and a confirmed 
   const clinic = makeClinic(db, "linden", () => time);
   const nine = "2026-11-10T08:00:00.000Z";
   const hold = (name: string) =>
-    clinic.book({ start: nine, service: "follow-up", name, email: name.toLowerCase() + "@example.com" });
+    clinic.book({ start: nine, service: "follow-up", name, email: name.toLowerCase() + "@example.com" }, "203.0.113.1");
   const nineIsFree = async () =>
     (await clinic.freeTimesOn("2026-11-10", "follow-up"))!.times.some((free) => free.startsAt === nine);
 

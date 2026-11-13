@@ -69,12 +69,15 @@ test("each free time names the physiotherapists who are free then", async (t) =>
   // The chip said "Karin, Oskar", so the booking's answer says who it went to. Karin has 10:00 now,
   // so the next booking at 10:00 goes to Oskar.
   const clinic = makeClinic(db, "linden", () => new Date("2026-11-09T18:00:00.000Z"));
-  const second = await clinic.book({
-    start: "2026-11-10T09:00:00.000Z",
-    service: "first-visit",
-    name: "Ali Berg",
-    email: "ali@example.com",
-  });
+  const second = await clinic.book(
+    {
+      start: "2026-11-10T09:00:00.000Z",
+      service: "first-visit",
+      name: "Ali Berg",
+      email: "ali@example.com",
+    },
+    "203.0.113.1",
+  );
   assert.deepEqual(second.kind === "held" && second.with, "Oskar");
 
   // Thursday afternoon too.

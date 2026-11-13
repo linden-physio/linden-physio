@@ -33,7 +33,8 @@ test("three bookings for the same time at the same moment, with two physiotherap
         start: "2026-11-10T09:00:00.000Z",
         service: "first-visit",
         name,
-        email: "test@example.com",
+        // Each their own address: one address may hold only two times at once.
+        email: name.split(" ")[0].toLowerCase() + "@example.com",
       }),
     });
   const answers = await Promise.all([book("Maja Lund"), book("Anna Holm"), book("Leo Strand")]);

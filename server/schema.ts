@@ -82,3 +82,16 @@ export const openingHours = pgTable(
 );
 
 export * from "./auth-schema.ts";
+
+// Each hold, by the internet address it came from, so that one address can't hold every time in the
+// book. Kept apart from the bookings because a hold nobody confirms is deleted, and it must still count.
+export const holdsMade = pgTable(
+  "holds_made",
+  {
+    id: serial().primaryKey(),
+    businessId: businessId(),
+    madeFrom: text("made_from").notNull(),
+    madeAt: timestamp("made_at", { withTimezone: true, mode: "string" }).notNull(),
+  },
+  (table) => [index("holds_made_from_idx").on(table.madeFrom, table.madeAt)],
+);

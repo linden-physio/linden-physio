@@ -29,7 +29,8 @@ test("with two physiotherapists, two people can book Tuesday at ten, and a third
         start: "2026-11-10T09:00:00.000Z",
         service: "first-visit",
         name,
-        email: "test@example.com",
+        // Each their own address: one address may hold only two times at once.
+        email: name.split(" ")[0].toLowerCase() + "@example.com",
       }),
     });
   assert.equal((await book("Maja Lund")).status, 201);

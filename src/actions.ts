@@ -5,6 +5,7 @@ import { refresh, updateTag } from "next/cache";
 import { z } from "zod";
 import { clinicHere } from "./business";
 import { emailConfirmLink } from "../server/holds.ts";
+import { addressOf } from "../server/address.ts";
 import type { FormState } from "./Message";
 
 // What a booking form must hold. The checks in the browser can be skipped: anyone can post to the
@@ -27,7 +28,8 @@ export async function book(previous: FormState, data: FormData): Promise<FormSta
   if (!fields.success) return { kind: "invalid", message: fields.error.issues[0].message };
   const { time, service, date, name, email } = fields.data;
   const clinic = await clinicHere();
-  const booked = await clinic.book({ start: time, service, name, email });
+  const asked = await headers();
+  const booked = await clinic.book({ start: time, service, name, email }, addressOf(asked));
   if (booked.kind === "taken") {
     updateTag("free-times");
     refresh();
@@ -35,10 +37,19 @@ export async function book(previous: FormState, data: FormData): Promise<FormSta
   }
   if (booked.kind === "passed") return { kind: "invalid", message: "That time has already passed." };
   if (booked.kind === "no-service") return { kind: "invalid", message: "Pick a service." };
+  if (booked.kind === "too-many") {
+    return {
+      kind: "failed",
+      message:
+        booked.per === "email"
+          ? "You have bookings waiting to be confirmed. Open the links we emailed you first, or try again in a while."
+          : "Too many bookings have come from your internet connection in the last hour. Please try again later, or email us.",
+    };
+  }
   if (booked.kind !== "held") return { kind: "failed", message: "We couldn't take your booking. Please try again." };
   // The time is held. It's the person's once they open the link we email them, which shows that the
   // address is theirs.
-  if (!(await emailConfirmLink(email, await headers()))) {
+  if (!(await emailConfirmLink(email, asked))) {
     await clinic.cancel(booked.id);
     return { kind: "failed", message: "We couldn't send the email to confirm your booking. Please try again later." };
   }

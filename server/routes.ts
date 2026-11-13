@@ -6,6 +6,7 @@ import { BookingId, FreeTimesQuery, NewBooking } from "./schemas.ts";
 import { makeClinic } from "./clinic.ts";
 import { businessFor } from "./businesses.ts";
 import { emailConfirmLink } from "./holds.ts";
+import { addressOf } from "./address.ts";
 
 // A 400 answer that names each field that failed, and why.
 function problems(error: z.ZodError) {
@@ -44,10 +45,14 @@ export function makeApp(
   app.post("/bookings", async (c) => {
     const parsed = NewBooking.safeParse(await c.req.json());
     if (!parsed.success) return c.json(problems(parsed.error), 400);
-    const booked = await c.var.clinic.book(parsed.data);
+    const booked = await c.var.clinic.book(parsed.data, addressOf(c.req.raw.headers));
     if (booked.kind === "no-service") return c.json({ error: "No such service: " + parsed.data.service }, 400);
     if (booked.kind === "passed") return c.json({ error: "That time has already passed." }, 409);
     if (booked.kind === "taken") return c.json({ error: "That time is no longer free." }, 409);
+    if (booked.kind === "too-many") {
+      c.header("Retry-After", String(15 * 60));
+      return c.json({ error: "Too many bookings waiting to be confirmed. Confirm them, or try again later." }, 429);
+    }
     // Held until the link in the email is opened, as on the page.
     if (!(await emailLink(parsed.data.email, c.req.raw.headers))) {
       await c.var.clinic.cancel(booked.id);

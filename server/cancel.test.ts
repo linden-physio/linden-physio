@@ -49,7 +49,7 @@ test("someone signed in from their link can cancel only their own bookings", asy
 
   const clinic = makeClinic(db, "linden", () => new Date("2026-11-09T18:00:00.000Z"));
   const book = (email: string) =>
-    clinic.book({ start: "2026-11-10T09:00:00.000Z", service: "follow-up", name: "Someone", email });
+    clinic.book({ start: "2026-11-10T09:00:00.000Z", service: "follow-up", name: "Someone", email }, "203.0.113.1");
   const maja = await book("maja@example.com");
   const sara = await book("sara@example.com");
   assert.ok(maja.kind === "held" && sara.kind === "held");
