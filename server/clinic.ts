@@ -150,6 +150,7 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
         const [made] = await db
           .insert(bookings)
           .values({
+            businessId: person.businessId,
             startsAt: toInstant(date, time),
             endsAt: toInstant(date, addMinutes(time, length)),
             service: booking.service,
