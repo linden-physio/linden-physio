@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { makeApp } from "./routes.ts";
+import { noMail } from "./holds.ts";
 import { makeClinic } from "./clinic.ts";
 import { setting } from "./env.ts";
 import { seed } from "./seed.ts";
@@ -18,7 +19,7 @@ test("a booking can be cancelled until it starts, and only once", async (t) => {
 
   // Monday evening, then Tuesday at ten past ten.
   let time = new Date("2026-11-09T18:00:00.000Z");
-  const app = makeApp(db, () => time);
+  const app = makeApp(db, () => time, noMail);
   const book = (start: string) =>
     app.request("/bookings", {
       method: "POST",
@@ -51,7 +52,7 @@ test("someone signed in from their link can cancel only their own bookings", asy
     clinic.book({ start: "2026-11-10T09:00:00.000Z", service: "follow-up", name: "Someone", email });
   const maja = await book("maja@example.com");
   const sara = await book("sara@example.com");
-  assert.ok(maja.kind === "booked" && sara.kind === "booked");
+  assert.ok(maja.kind === "held" && sara.kind === "held");
 
   assert.deepEqual(await clinic.bookingsFor("Maja@example.com"), [
     { id: maja.id, startsAt: "2026-11-10T09:00:00.000Z", service: "Follow-up", with: maja.with },

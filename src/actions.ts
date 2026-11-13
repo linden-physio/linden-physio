@@ -1,8 +1,10 @@
 "use server";
 
+import { headers } from "next/headers";
 import { refresh, updateTag } from "next/cache";
 import { z } from "zod";
 import { clinicHere } from "./business";
+import { emailConfirmLink } from "../server/holds.ts";
 import type { FormState } from "./Message";
 
 // What a booking form must hold. The checks in the browser can be skipped: anyone can post to the
@@ -33,11 +35,17 @@ export async function book(previous: FormState, data: FormData): Promise<FormSta
   }
   if (booked.kind === "passed") return { kind: "invalid", message: "That time has already passed." };
   if (booked.kind === "no-service") return { kind: "invalid", message: "Pick a service." };
-  if (booked.kind !== "booked") return { kind: "failed", message: "We couldn't take your booking. Please try again." };
+  if (booked.kind !== "held") return { kind: "failed", message: "We couldn't take your booking. Please try again." };
+  // The time is held. It's the person's once they open the link we email them, which shows that the
+  // address is theirs.
+  if (!(await emailConfirmLink(email, await headers()))) {
+    await clinic.cancel(booked.id);
+    return { kind: "failed", message: "We couldn't send the email to confirm your booking. Please try again later." };
+  }
   // The free times have changed: forget the kept ones, and send the page's new free times back with the
   // answer. updateTag makes the next request wait for fresh times, so this answer has them.
   updateTag("free-times");
   refresh();
   // When more than one physiotherapist was free, the person couldn't choose, so say who it is with.
-  return { kind: "booked", id: booked.id, name, date, time: booked.startsAt, with: booked.with };
+  return { kind: "held", id: booked.id, name, email, date, time: booked.startsAt, with: booked.with };
 }

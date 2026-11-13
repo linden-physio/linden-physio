@@ -31,7 +31,8 @@ const kronor = new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SE
 // A day at the clinic, as the staff see it: a column for each physiotherapist, each booking at its time.
 // What each person sees and may cancel comes from permissions.ts, as the action's check does.
 export function DayView({ date, day, who }: { date: string; day: Day; who: Staff }) {
-  const visits = day.people.flatMap((person) => person.visits);
+  // A held booking isn't one yet: it counts once the person opens the link we emailed them.
+  const visits = day.people.flatMap((person) => person.visits).filter((visit) => !visit.held);
   const value = visits.reduce((sum, visit) => sum + visit.priceSek, 0);
   const hours = Array.from({ length: last - first + 1 }, (_, i) => String(first + i).padStart(2, "0") + ":00");
   const arrow = buttonVariants({ variant: "ghost", size: "icon" });
@@ -100,12 +101,18 @@ export function DayView({ date, day, who }: { date: string; day: Day; who: Staff
                 {person.visits.map((visit) => (
                   <li
                     key={visit.start}
-                    className="absolute inset-x-1 overflow-hidden rounded-sm border border-brand-600/40 bg-brand-50 px-2 py-1 text-small"
+                    className={
+                      "absolute inset-x-1 overflow-hidden rounded-sm border px-2 py-1 text-small " +
+                      (visit.held
+                        ? "border-dashed border-line-200 bg-surface text-ink-600"
+                        : "border-brand-600/40 bg-brand-50")
+                    }
                     style={{ top: top(visit.start) + "rem", height: top(visit.end) - top(visit.start) + "rem" }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <span className="font-medium">{visit.start}</span> {visit.name}
+                        {visit.held && " (held, not confirmed)"}
                         <span className="block text-ink-600">{visit.service}</span>
                       </div>
                       {may(who, { do: "cancel", staffId: person.id }) && (

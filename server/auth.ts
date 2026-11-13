@@ -11,6 +11,9 @@ import { db } from "./db.ts";
 import { setting } from "./env.ts";
 import { sendMail } from "./mail.ts";
 
+// Where the link that confirms a booking goes, once it has signed the person in (see holds.ts).
+export const CONFIRM_PATH = "/bookings/confirm";
+
 // How the member of staff with an address signs in ("microsoft" or "email"), or null for an address
 // that isn't on any business's staff.
 async function staffSignIn(email: string | undefined): Promise<string | null> {
@@ -89,6 +92,8 @@ function makeAuth() {
         sendMagicLink: async ({ email, url }) => {
           // From the business whose address the link is for.
           const business = await businessFor(db(), new URL(url).host);
+          // A link that confirms a booking says so (see holds.ts).
+          const confirming = new URL(url).searchParams.get("callbackURL") === CONFIRM_PATH;
           const [{ name, email: from }] = await db()
             .select({ name: businesses.name, email: businesses.email })
             .from(businesses)
@@ -96,14 +101,14 @@ function makeAuth() {
           await sendMail({
             from: name + " <" + from + ">",
             to: email,
-            subject: "Your link to " + name,
+            subject: confirming ? "Confirm your booking at " + name : "Your link to " + name,
             text:
-              "Open this link to sign in to " +
+              (confirming ? "Open this link to confirm your booking at " : "Open this link to sign in to ") +
               name +
               ":\n\n" +
               url +
               "\n\nIt works once, for 15 minutes. If you didn't ask for it, you can ignore this email.\n",
-            html: `<p>Open this link to sign in to ${name}:</p><p><a href="${url}">Sign in</a></p><p>It works once, for 15 minutes. If you didn't ask for it, you can ignore this email.</p>`,
+            html: `<p>${confirming ? "Open this link to confirm your booking at" : "Open this link to sign in to"} ${name}:</p><p><a href="${url}">${confirming ? "Confirm my booking" : "Sign in"}</a></p><p>It works once, for 15 minutes. If you didn't ask for it, you can ignore this email.</p>`,
           });
         },
       }),

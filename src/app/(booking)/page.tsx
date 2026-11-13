@@ -39,14 +39,16 @@ async function offers(business: string) {
   return clinic(business).offers();
 }
 
-// A day's free times for a service, kept for an hour: every visit in that hour gets the same answer
-// without asking the database. The business, the day and the service are the cache's key: leave the
+// A day's free times for a service, kept for a minute: every visit in that minute gets the same answer
+// without asking the database. Not for an hour any more: a hold nobody confirms lets its time go
+// 15 minutes later, and nothing happens then that could forget the kept answer, so the answer has to
+// go stale on its own. The business, the day and the service are the cache's key: leave the
 // business out, and Birch's visitors are sent Linden's times. Every booking and cancel forgets them
 // all, by their tag: a closed day's answer names the nearest free time up to two weeks ahead, so one
 // booking can change the answers for other days too.
 async function cachedFreeTimes(business: string, day: string, service: string) {
   "use cache";
-  cacheLife("hours");
+  cacheLife("minutes");
   cacheTag("free-times");
   return clinic(business).freeTimesOn(day, service);
 }

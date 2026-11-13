@@ -58,9 +58,21 @@ async function Bookings({ searchParams }: Pick<PageProps<"/bookings">, "searchPa
     );
   }
   const booked = await (await clinicHere()).bookingsFor(session.user.email);
+  // Back from the link that confirms a booking (see bookings/confirm), with how many it confirmed.
+  const { confirmed } = await searchParams;
   return (
     <section className="flex flex-col gap-4">
       <p className="text-ink-600">For {session.user.email}</p>
+      {confirmed !== undefined &&
+        (confirmed === "0" ? (
+          <p role="alert" className="rounded-md bg-invalid-100 px-4 py-3 text-danger-600">
+            There was nothing to confirm: the time you held ran out before the link was opened. Please book again.
+          </p>
+        ) : (
+          <p role="status" className="rounded-md bg-ready-100 px-4 py-3">
+            Your booking is confirmed.
+          </p>
+        ))}
       {booked.length === 0 ? (
         <p>You have no bookings coming up.</p>
       ) : (

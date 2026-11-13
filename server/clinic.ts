@@ -1,5 +1,5 @@
 import pg from "pg";
-import { and, eq, gt, gte, lt, sql } from "drizzle-orm";
+import { and, eq, gt, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import type { NodePgDatabase, NodePgTransaction } from "drizzle-orm/node-postgres";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { bookings, businesses, openingHours, services, staff } from "./schema.ts";
@@ -41,8 +41,13 @@ function earliest(answers: ({ date: string; time: string } | null)[]) {
 }
 
 // with is the first name of the physiotherapist the booking is with.
+// How long a new booking is held for the person to open the link we email them: as long as the link
+// works.
+export const HOLD_MINUTES = 15;
+
+// A new booking is held, not booked: it counts once the person opens the link in the email.
 export type Booked =
-  | { kind: "booked"; id: string; startsAt: string; with: string }
+  | { kind: "held"; id: string; startsAt: string; with: string; heldUntil: string }
   | { kind: "taken" }
   | { kind: "passed" }
   | { kind: "no-service" };
@@ -55,7 +60,16 @@ export type Service = { id: string; title: string; minutes: number; priceSek: nu
 export type OwnBooking = { id: string; startsAt: string; service: string; with: string };
 
 // One booking on the staff's day page.
-export type Visit = { id: string; start: string; end: string; name: string; service: string; priceSek: number };
+// held: made, but the person hasn't opened the link in the email yet.
+export type Visit = {
+  id: string;
+  start: string;
+  end: string;
+  name: string;
+  service: string;
+  priceSek: number;
+  held: boolean;
+};
 // A day at the clinic, for the staff: each physiotherapist's bookings, and the opening hours.
 export type Day = { hours: OpeningHours; people: { id: number; name: string; visits: Visit[] }[] };
 
@@ -69,6 +83,9 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     services: eq(services.businessId, business),
     openingHours: eq(openingHours.businessId, business),
   };
+  // The bookings that count: the confirmed ones, and the holds whose time isn't up. A hold nobody
+  // confirmed is as good as gone.
+  const live = () => or(isNotNull(bookings.confirmedAt), gt(bookings.heldUntil, now().toISOString()));
 
   // The business's name and address, as its pages show them, and how its staff sign in.
   async function about(): Promise<{ id: string; name: string; email: string; staffSignIn: string }> {
@@ -145,6 +162,7 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
       .where(
         and(
           ofBusiness.bookings,
+          live(),
           gte(bookings.startsAt, toInstant(date, "00:00")),
           lt(bookings.startsAt, toInstant(addDays(date, 15), "00:00")),
         ),
@@ -183,6 +201,11 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     const { date, time } = fromInstant(booking.start);
     const length = await minutesFor(booking.service);
     if (length === null) return { kind: "no-service" };
+    // Holds whose time is up still sit in the table, and its rule against overlaps still sees them.
+    // Clear them out first, so their times can be taken.
+    await db
+      .delete(bookings)
+      .where(and(ofBusiness.bookings, isNull(bookings.confirmedAt), lte(bookings.heldUntil, now().toISOString())));
     // Try the physiotherapists who are free at that time, one after another. Another request can
     // take the same physiotherapist between our check and our insert, and then the next one may
     // still be free.
@@ -203,11 +226,18 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
               staffId: person.id,
               name: booking.name,
               email: booking.email,
+              heldUntil: new Date(now().getTime() + HOLD_MINUTES * 60_000).toISOString(),
             })
-            .returning({ id: bookings.publicId }),
+            .returning({ id: bookings.publicId, heldUntil: bookings.heldUntil }),
         );
         // The id is what the person who booked cancels with.
-        return { kind: "booked", id: made.id, startsAt: toInstant(date, time), with: firstName(person.name) };
+        return {
+          kind: "held",
+          id: made.id,
+          startsAt: toInstant(date, time),
+          with: firstName(person.name),
+          heldUntil: new Date(made.heldUntil!).toISOString(),
+        };
       } catch (error) {
         // The table's rule refused it: 23P01 (exclusion constraint), or now and then 40P01, when two
         // inserts were waiting for each other and Postgres stopped one of them.
@@ -216,6 +246,24 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
       }
     }
     return { kind: "taken" };
+  }
+
+  // Confirm the holds made with an email address, now that someone has opened the link we sent it. Holds
+  // whose time is up stay unconfirmed: their times may be someone else's now. Returns how many.
+  async function confirm(email: string): Promise<number> {
+    const confirmed = await db
+      .update(bookings)
+      .set({ confirmedAt: now().toISOString(), heldUntil: null })
+      .where(
+        and(
+          ofBusiness.bookings,
+          sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`,
+          isNull(bookings.confirmedAt),
+          gt(bookings.heldUntil, now().toISOString()),
+        ),
+      )
+      .returning({ id: bookings.id });
+    return confirmed.length;
   }
 
   // Cancel a booking by its id. With an email address, only a booking made with that address: someone
@@ -250,12 +298,14 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
         name: bookings.name,
         service: services.title,
         priceSek: services.priceSek,
+        held: sql<boolean>`${bookings.confirmedAt} IS NULL`,
       })
       .from(bookings)
       .innerJoin(services, eq(bookings.service, services.id))
       .where(
         and(
           ofBusiness.bookings,
+          live(),
           gte(bookings.startsAt, toInstant(date, "00:00")),
           lt(bookings.startsAt, toInstant(addDays(date, 1), "00:00")),
         ),
@@ -282,6 +332,7 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
         and(
           ofBusiness.bookings,
           sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`,
+          live(),
           gt(bookings.startsAt, now().toISOString()),
         ),
       )
@@ -298,7 +349,7 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     return row?.staffId ?? null;
   }
 
-  return { about, offers, freeTimesOn, book, cancel, day, bookingsFor, bookedWith };
+  return { about, offers, freeTimesOn, book, confirm, cancel, day, bookingsFor, bookedWith };
 }
 
 type Clinic = ReturnType<typeof clinicIn>;
@@ -323,6 +374,7 @@ export function makeClinic(db: NodePgDatabase, business: string, now: () => Date
     offers: inBusiness((c) => c.offers),
     freeTimesOn: inBusiness((c) => c.freeTimesOn),
     book: inBusiness((c) => c.book),
+    confirm: inBusiness((c) => c.confirm),
     cancel: inBusiness((c) => c.cancel),
     day: inBusiness((c) => c.day),
     bookingsFor: inBusiness((c) => c.bookingsFor),

@@ -113,6 +113,13 @@
       "when": 1794552910973,
       "tag": "0015_let_postgres_keep_each_business_to_its_own_rows",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794553532135,
+      "tag": "0016_hold_each_booking_until_the_email_link_is_opened",
+      "breakpoints": true
     }
   ]
 }

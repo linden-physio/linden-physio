@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { makeApp } from "./routes.ts";
+import { noMail } from "./holds.ts";
 import { setting } from "./env.ts";
 import { seed } from "./seed.ts";
 
@@ -14,7 +15,7 @@ test("with two physiotherapists, two people can book Tuesday at ten, and a third
   await db.execute(sql`CREATE SCHEMA public`);
   await migrate(db, { migrationsFolder: "server/migrations" });
   await seed(db);
-  const server = serve({ fetch: makeApp(db, () => new Date("2026-11-09T18:00:00.000Z")).fetch, port: 3002 });
+  const server = serve({ fetch: makeApp(db, () => new Date("2026-11-09T18:00:00.000Z"), noMail).fetch, port: 3002 });
   t.after(async () => {
     server.close();
     await db.$client.end();

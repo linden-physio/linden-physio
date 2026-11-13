@@ -5,6 +5,7 @@ import type { z } from "zod";
 import { BookingId, FreeTimesQuery, NewBooking } from "./schemas.ts";
 import { makeClinic } from "./clinic.ts";
 import { businessFor } from "./businesses.ts";
+import { emailConfirmLink } from "./holds.ts";
 
 // A 400 answer that names each field that failed, and why.
 function problems(error: z.ZodError) {
@@ -18,7 +19,12 @@ function problems(error: z.ZodError) {
 // origin, so the browser needs no permission (no CORS). What each one does is in clinic.ts; here it's
 // only HTTP: reading the request and writing the answer. Each request is for the business at the
 // address it was sent to.
-export function makeApp(db: NodePgDatabase, now: () => Date = () => new Date()) {
+// emailLink sends the link that confirms a booking; the tests give one that sends nothing.
+export function makeApp(
+  db: NodePgDatabase,
+  now: () => Date = () => new Date(),
+  emailLink: (email: string, headers: Headers) => Promise<boolean> = emailConfirmLink,
+) {
   const app = new Hono<{ Variables: { clinic: ReturnType<typeof makeClinic> } }>();
   app.use(logger());
   app.use(async (c, next) => {
@@ -42,7 +48,12 @@ export function makeApp(db: NodePgDatabase, now: () => Date = () => new Date()) 
     if (booked.kind === "no-service") return c.json({ error: "No such service: " + parsed.data.service }, 400);
     if (booked.kind === "passed") return c.json({ error: "That time has already passed." }, 409);
     if (booked.kind === "taken") return c.json({ error: "That time is no longer free." }, 409);
-    return c.json({ id: booked.id, startsAt: booked.startsAt }, 201);
+    // Held until the link in the email is opened, as on the page.
+    if (!(await emailLink(parsed.data.email, c.req.raw.headers))) {
+      await c.var.clinic.cancel(booked.id);
+      return c.json({ error: "We couldn't send the email to confirm the booking." }, 503);
+    }
+    return c.json({ id: booked.id, startsAt: booked.startsAt, heldUntil: booked.heldUntil }, 201);
   });
 
   app.delete("/bookings/:id", async (c) => {

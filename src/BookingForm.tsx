@@ -133,7 +133,7 @@ export function BookingForm({
         </DialogContent>
       </Dialog>
       <Message formState={shown} />
-      {shown.kind === "booked" && (
+      {shown.kind === "held" && (
         <Button type="button" variant="outline" className="sm:self-start" onClick={() => cancel(shown)}>
           Cancel this booking
         </Button>

@@ -38,6 +38,10 @@ export const bookings = pgTable(
       .references(() => staff.id),
     name: text().notNull(),
     email: text().notNull(),
+    // A new booking is only held, until the person opens the link we email them, and then it's
+    // confirmed. A hold nobody confirms lets the time go at held_until.
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true, mode: "string" }),
+    heldUntil: timestamp("held_until", { withTimezone: true, mode: "string" }),
   },
   // The free times ask for a fortnight of bookings by start time, so look them up by start time.
   (table) => [index("bookings_starts_at_idx").on(table.startsAt)],

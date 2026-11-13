@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { makeApp } from "./routes.ts";
+import { noMail } from "./holds.ts";
 import { setting } from "./env.ts";
 import { seed } from "./seed.ts";
 import { makeClinic } from "./clinic.ts";
@@ -17,7 +18,7 @@ test("each free time names the physiotherapists who are free then", async (t) =>
   await seed(db);
   t.after(() => db.$client.end());
 
-  const app = makeApp(db, () => new Date("2026-11-09T18:00:00.000Z"));
+  const app = makeApp(db, () => new Date("2026-11-09T18:00:00.000Z"), noMail);
   // The day's free times as "09:00 Karin, Oskar", in UTC: Stockholm is an hour ahead in November.
   const names = async (date: string, service: string) => {
     const answer = await (await app.request(`/free-times?date=${date}&service=${service}`)).json();
@@ -74,7 +75,7 @@ test("each free time names the physiotherapists who are free then", async (t) =>
     name: "Ali Berg",
     email: "ali@example.com",
   });
-  assert.deepEqual(second.kind === "booked" && second.with, "Oskar");
+  assert.deepEqual(second.kind === "held" && second.with, "Oskar");
 
   // Thursday afternoon too.
   assert.deepEqual((await names("2026-11-12", "first-visit"))[0], "12:00 Karin, Oskar");

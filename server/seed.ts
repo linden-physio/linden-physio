@@ -115,6 +115,8 @@ export async function seedWeek(db: NodePgDatabase) {
         staffId,
         name,
         email: name.toLowerCase().replace(" ", ".") + "@example.com",
+        // Booked before holds existed, or as good as: confirmed.
+        confirmedAt: new Date().toISOString(),
       })),
     )
     .onConflictDoNothing();

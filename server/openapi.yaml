@@ -37,11 +37,19 @@ paths:
             schema: { $ref: "#/components/schemas/NewBooking" }
       responses:
         "201":
-          description: Booked. The id is what the person who booked uses to cancel.
+          description: >
+            Held, not yet booked. We email the address a link; the booking counts once someone opens it,
+            and a hold nobody confirms lets its time go at heldUntil. The id is what the person who booked
+            uses to cancel.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Booking" }
-              example: { id: 3f2b8c1e-6a4d-4e9b-9c7a-1d2e3f4a5b6c, startsAt: "2026-11-10T09:00:00.000Z" }
+              example:
+                {
+                  id: 3f2b8c1e-6a4d-4e9b-9c7a-1d2e3f4a5b6c,
+                  startsAt: "2026-11-10T09:00:00.000Z",
+                  heldUntil: "2026-11-09T18:15:00.000Z",
+                }
         "400":
           $ref: "#/components/responses/BadRequest"
         "409":
@@ -52,6 +60,11 @@ paths:
               examples:
                 taken: { value: { error: That time is no longer free. } }
                 passed: { value: { error: That time has already passed. } }
+        "503":
+          description: The email that confirms the booking couldn't be sent, so nothing is held.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Problem" }
   /bookings/{id}:
     delete:
       operationId: cancelBooking
@@ -127,10 +140,11 @@ components:
         email: { type: string, format: email }
     Booking:
       type: object
-      required: [id, startsAt]
+      required: [id, startsAt, heldUntil]
       properties:
         id: { type: string, format: uuid }
         startsAt: { type: string, format: date-time }
+        heldUntil: { type: string, format: date-time }
     Problem:
       type: object
       required: [error]

@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { makeApp } from "./routes.ts";
+import { noMail } from "./holds.ts";
 import { setting } from "./env.ts";
 import { seed } from "./seed.ts";
 
@@ -18,7 +19,7 @@ test("three bookings for the same time at the same moment, with two physiotherap
   // A server that has been running a while has its connections open already. Open three, so that the
   // three bookings below really do run side by side.
   await Promise.all([db.execute(sql`SELECT 1`), db.execute(sql`SELECT 1`), db.execute(sql`SELECT 1`)]);
-  const server = serve({ fetch: makeApp(db, () => new Date("2026-11-09T18:00:00.000Z")).fetch, port: 3001 });
+  const server = serve({ fetch: makeApp(db, () => new Date("2026-11-09T18:00:00.000Z"), noMail).fetch, port: 3001 });
   t.after(async () => {
     server.close();
     await db.$client.end();

@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { makeApp } from "../server/routes.ts";
+import { noMail } from "../server/holds.ts";
 import { setting } from "../server/env.ts";
 import { seed } from "../server/seed.ts";
 import { afterCancel } from "./cancelling.ts";
@@ -20,7 +21,7 @@ test("the page's message for each answer to a cancel", async (t) => {
 
   // Monday evening, then Tuesday at ten past ten.
   let time = new Date("2026-11-09T18:00:00.000Z");
-  const app = makeApp(db, () => time);
+  const app = makeApp(db, () => time, noMail);
   const made = await app.request("/bookings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
