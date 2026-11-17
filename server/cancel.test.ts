@@ -9,7 +9,7 @@ import { makeClinic } from "./clinic.ts";
 import { setting } from "./env.ts";
 import { seed } from "./seed.ts";
 
-test("a booking can be cancelled until it starts, and only once", async (t) => {
+test("a booking can be cancelled until it starts, only once, and only by whoever booked it", async (t) => {
   const db = drizzle(setting("TEST_DATABASE_URL"));
   await db.execute(sql`DROP SCHEMA IF EXISTS public, drizzle CASCADE`);
   await db.execute(sql`CREATE SCHEMA public`);
@@ -19,7 +19,14 @@ test("a booking can be cancelled until it starts, and only once", async (t) => {
 
   // Monday evening, then Tuesday at ten past ten.
   let time = new Date("2026-11-09T18:00:00.000Z");
-  const app = makeApp(db, () => time, noMail);
+  // Who is signed in from their link: Maja, someone else, or no one.
+  let asking: string | null = "maja@example.com";
+  const app = makeApp(
+    db,
+    () => time,
+    noMail,
+    async () => asking,
+  );
   const book = (start: string) =>
     app.request("/bookings", {
       method: "POST",
@@ -29,6 +36,12 @@ test("a booking can be cancelled until it starts, and only once", async (t) => {
   const cancel = (id: string) => app.request("/bookings/" + id, { method: "DELETE" });
 
   const first = await (await book("2026-11-10T09:00:00.000Z")).json();
+  // Knowing the id is not enough.
+  asking = null;
+  assert.equal((await cancel(first.id)).status, 401);
+  asking = "sara@example.com";
+  assert.equal((await cancel(first.id)).status, 404);
+  asking = "Maja@example.com";
   assert.equal((await cancel(first.id)).status, 204);
   assert.equal((await cancel(first.id)).status, 404);
 

@@ -118,6 +118,12 @@ function makeAuth() {
   });
 }
 
+// The email address of whoever is signed in on a request with these headers, or null.
+export async function signedInAs(headers: Headers): Promise<string | null> {
+  const session = await auth().api.getSession({ headers });
+  return session?.user.email ?? null;
+}
+
 // Made the first time something asks for it, like the database: next build loads every file.
 let made: ReturnType<typeof makeAuth> | null = null;
 export function auth() {

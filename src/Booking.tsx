@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, use, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { Summary } from "./Summary";
 import { BookingForm } from "./BookingForm";
 
@@ -30,15 +29,6 @@ export function Booking({
   times: ReactNode;
 }) {
   const [picked, setPicked] = useState<string | null>(null);
-  const router = useRouter();
-
-  // The free times have changed on the server: ask it for this page again. What's on screen here, like
-  // the message under the form, stays.
-  function changed() {
-    setPicked(null);
-    router.refresh();
-  }
-
   return (
     <>
       <section aria-labelledby="time-heading" className="times">
@@ -64,7 +54,6 @@ export function Booking({
           service={serviceName}
           serviceId={serviceId}
           onSending={() => setPicked(null)}
-          onChanged={changed}
         />
       </section>
     </>

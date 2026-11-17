@@ -7,6 +7,7 @@ import { makeClinic } from "./clinic.ts";
 import { businessFor } from "./businesses.ts";
 import { emailConfirmLink } from "./holds.ts";
 import { addressOf } from "./address.ts";
+import { signedInAs } from "./auth.ts";
 
 // A 400 answer that names each field that failed, and why.
 function problems(error: z.ZodError) {
@@ -21,10 +22,13 @@ function problems(error: z.ZodError) {
 // only HTTP: reading the request and writing the answer. Each request is for the business at the
 // address it was sent to.
 // emailLink sends the link that confirms a booking; the tests give one that sends nothing.
+// whoIsAsking reads the email address of whoever is signed in from their link (as on /bookings), or
+// null; the tests give one that reads no cookie.
 export function makeApp(
   db: NodePgDatabase,
   now: () => Date = () => new Date(),
   emailLink: (email: string, headers: Headers) => Promise<boolean> = emailConfirmLink,
+  whoIsAsking: (headers: Headers) => Promise<string | null> = signedInAs,
 ) {
   const app = new Hono<{ Variables: { clinic: ReturnType<typeof makeClinic> } }>();
   app.use(logger());
@@ -61,10 +65,14 @@ export function makeApp(
     return c.json({ id: booked.id, startsAt: booked.startsAt, heldUntil: booked.heldUntil }, 201);
   });
 
+  // Only someone signed in from their link may cancel, and only their own bookings: the same check as
+  // the Cancel buttons on /bookings. Knowing a booking's id is not enough.
   app.delete("/bookings/:id", async (c) => {
+    const email = await whoIsAsking(c.req.raw.headers);
+    if (email === null) return c.json({ error: "Sign in from the link in your email to cancel a booking." }, 401);
     const id = BookingId.safeParse(c.req.param("id"));
     if (!id.success) return c.json(problems(id.error), 400);
-    const cancelled = await c.var.clinic.cancel(id.data);
+    const cancelled = await c.var.clinic.cancel(id.data, email);
     if (cancelled === "cancelled") return c.body(null, 204);
     if (cancelled === "started") return c.json({ error: "This booking has already started." }, 409);
     return c.json({ error: "There is no such booking." }, 404);

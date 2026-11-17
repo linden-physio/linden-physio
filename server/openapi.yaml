@@ -70,8 +70,8 @@ paths:
       operationId: cancelBooking
       summary: Cancel a booking
       description: >
-        Anyone who knows a booking's id can cancel it, so the id is long and random, and only the person
-        who booked is given it.
+        Only someone signed in from the link in their email (the session cookie that /bookings uses) can
+        cancel, and only a booking made with that address. Knowing a booking's id is not enough.
       parameters:
         - name: id
           in: path
@@ -83,8 +83,14 @@ paths:
           description: Cancelled. The time is free again.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Nobody is signed in.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Problem" }
+              example: { error: Sign in from the link in your email to cancel a booking. }
         "404":
-          description: There is no booking with that id. It may have been cancelled already.
+          description: There is no booking with that id made with this address. It may have been cancelled already.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Problem" }

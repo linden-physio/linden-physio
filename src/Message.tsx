@@ -6,8 +6,6 @@ export type FormState =
   | { kind: "invalid"; message: string }
   | { kind: "sending" }
   | { kind: "held"; id: string; name: string; email: string; date: string; time: string; with: string }
-  | { kind: "cancelling" }
-  | { kind: "cancelled"; date: string; time: string }
   | { kind: "failed"; message: string };
 
 function messageFor(formState: FormState): string {
@@ -30,12 +28,8 @@ function messageFor(formState: FormState): string {
         formState.name +
         ". We've sent a link to " +
         formState.email +
-        ". Open it within 15 minutes to confirm the booking, or the time goes back to the others."
+        ". Open it within 15 minutes to confirm the booking, or the time goes back to the others. Changed your mind? Don't open it."
       );
-    case "cancelling":
-      return "Cancelling your booking…";
-    case "cancelled":
-      return "Cancelled: " + dayName(formState.date) + " " + clockTime(formState.time) + ". The time is free again.";
     case "failed":
       return formState.message;
     default: {
@@ -51,8 +45,6 @@ const messageColour: Record<FormState["kind"], string> = {
   invalid: "bg-invalid-100 text-danger-600",
   sending: "bg-sending-100",
   held: "bg-ready-100",
-  cancelling: "bg-sending-100",
-  cancelled: "bg-ready-100",
   failed: "bg-invalid-100 text-danger-600",
 };
 
