@@ -1,6 +1,12 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildConfig, type CollectionConfig, type CollectionAfterChangeHook, type Field } from "payload";
+import {
+  buildConfig,
+  type CollectionConfig,
+  type CollectionAfterChangeHook,
+  type CollectionAfterDeleteHook,
+  type Field,
+} from "payload";
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { revalidateTag } from "next/cache";
 import { and, eq } from "drizzle-orm";
@@ -19,8 +25,15 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 // When a text is published, the pages that show it forget their kept copy (the "content" tag, as in
 // film 35), so the next visit gets the new words, not the next deploy. { expire: 0 }: the next visit
 // waits for fresh words instead of being shown the old ones once more.
-const forgetKeptWords: CollectionAfterChangeHook = ({ doc }) => {
-  if (doc._status === "published") revalidateTag("content", { expire: 0 });
+// Unpublishing counts too: the page must stop showing a text that was published and isn't any more.
+const forgetKeptWords: CollectionAfterChangeHook = ({ doc, previousDoc }) => {
+  if (doc._status === "published" || previousDoc?._status === "published") revalidateTag("content", { expire: 0 });
+  return doc;
+};
+
+// And so does deleting one.
+const forgetDeletedWords: CollectionAfterDeleteHook = ({ doc }) => {
+  revalidateTag("content", { expire: 0 });
   return doc;
 };
 
@@ -56,7 +69,7 @@ const Welcome: CollectionConfig = {
   access: { read: ownBusiness, create: ownBusiness, update: ownBusiness, delete: () => false },
   versions,
   fields: [business, { name: "line", type: "textarea", required: true }],
-  hooks: { afterChange: [forgetKeptWords] },
+  hooks: { afterChange: [forgetKeptWords], afterDelete: [forgetDeletedWords] },
 };
 
 const ServiceTexts: CollectionConfig = {
@@ -71,7 +84,7 @@ const ServiceTexts: CollectionConfig = {
     { name: "service", type: "text", required: true, unique: true },
     { name: "line", type: "textarea", required: true },
   ],
-  hooks: { afterChange: [forgetKeptWords] },
+  hooks: { afterChange: [forgetKeptWords], afterDelete: [forgetDeletedWords] },
 };
 
 // Who may use the editor: the staff who may change the words, signed in the way they always do (with
