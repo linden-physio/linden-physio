@@ -3,6 +3,7 @@ import { work, type Handlers } from "./jobs.ts";
 import { sendReminder } from "./reminders.ts";
 import { emailConfirmed } from "./confirmations.ts";
 import { readReceipt, sendFile } from "./accounting.ts";
+import { jobGaveUp } from "./alerts.ts";
 
 // What each kind of job does.
 export const handlers: Handlers = {
@@ -14,5 +15,5 @@ export const handlers: Handlers = {
 
 // Do the jobs that are due now, and with until, those that come due before then.
 export function workNow(until?: Date) {
-  return work(db(), handlers, { until });
+  return work(db(), handlers, { until, onGaveUp: jobGaveUp });
 }

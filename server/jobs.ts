@@ -51,7 +51,15 @@ export async function work(
     perSecond = 5,
     now = () => new Date(),
     until,
-  }: { max?: number; perSecond?: number; now?: () => Date; until?: Date } = {},
+    onGaveUp,
+  }: {
+    max?: number;
+    perSecond?: number;
+    now?: () => Date;
+    until?: Date;
+    // Called when a job has failed for the last time, to tell a person.
+    onGaveUp?: (job: Job, error: unknown) => Promise<void>;
+  } = {},
 ): Promise<{ done: number; failed: number }> {
   let done = 0;
   let failed = 0;
@@ -110,6 +118,7 @@ export async function work(
         await tx.execute(
           sql`UPDATE jobs SET attempts = ${attempts}, last_error = ${String(error)}, run_at = ${later} WHERE id = ${job.id}`,
         );
+        if (attempts >= MAX_ATTEMPTS) await onGaveUp?.(job, error).catch((e) => log("error", "alert not sent", {}, e));
         return "failed";
       }
     });

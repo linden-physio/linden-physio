@@ -208,3 +208,17 @@ export const browserErrors = pgTable(
   },
   (table) => [index("browser_errors_fingerprint_idx").on(table.businessId, table.fingerprint)],
 );
+
+// Each alert sent to a business, once: the same trouble found again doesn't send another mail.
+export const alerts = pgTable(
+  "alerts",
+  {
+    id: serial().primaryKey(),
+    businessId: businessId(),
+    // What the alert is about, like "file-2026-11-18": one alert for each.
+    key: text().notNull(),
+    subject: text().notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.businessId, table.key)],
+);

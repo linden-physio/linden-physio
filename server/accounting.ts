@@ -6,6 +6,7 @@ import { enqueue, type Job } from "./jobs.ts";
 import { fromInstant } from "./clock.ts";
 import { db } from "./db.ts";
 import { setting } from "./env.ts";
+import { fileAlert } from "./alerts.ts";
 import { log } from "./log.ts";
 
 // The nightly file to the accounting system (Ekonomihuset), in SIE 4, the Swedish standard. A deposit
@@ -213,4 +214,7 @@ export async function readReceipt(job: Job) {
     .update(exports)
     .set({ status: said.accepted ? "accepted" : "rejected", receipt: said.text })
     .where(and(eq(exports.businessId, job.business), eq(exports.day, job.payload.day)));
+  if (!said.accepted) {
+    await fileAlert(job.business, job.payload.day, "The accounting system rejected it: " + said.text);
+  }
 }
