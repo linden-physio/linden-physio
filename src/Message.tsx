@@ -6,7 +6,9 @@ export type FormState =
   | { kind: "invalid"; message: string }
   | { kind: "sending" }
   | { kind: "held"; id: string; name: string; email: string; date: string; time: string; with: string }
-  | { kind: "failed"; message: string };
+  | { kind: "failed"; message: string }
+  // Held while the person pays the deposit in the payment provider's card form, at the address form.
+  | { kind: "pay"; form: string; depositSek: number; name: string; date: string; time: string; with: string };
 
 function messageFor(formState: FormState): string {
   switch (formState.kind) {
@@ -32,6 +34,20 @@ function messageFor(formState: FormState): string {
       );
     case "failed":
       return formState.message;
+    case "pay":
+      return (
+        "Held for you: " +
+        dayName(formState.date) +
+        " " +
+        clockTime(formState.time) +
+        " with " +
+        formState.with +
+        ", for " +
+        formState.name +
+        ". Pay the " +
+        formState.depositSek +
+        " kr deposit below within 15 minutes to confirm it. The rest you pay at the clinic."
+      );
     default: {
       const unhandled: never = formState;
       throw new Error("Unhandled form state: " + JSON.stringify(unhandled));
@@ -45,6 +61,7 @@ const messageColour: Record<FormState["kind"], string> = {
   invalid: "bg-invalid-100 text-danger-600",
   sending: "bg-sending-100",
   held: "bg-ready-100",
+  pay: "bg-ready-100",
   failed: "bg-invalid-100 text-danger-600",
 };
 

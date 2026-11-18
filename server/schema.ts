@@ -67,6 +67,8 @@ export const services = pgTable("services", {
   line: text().notNull().default(""),
   // Where it comes in the list.
   position: integer().notNull().default(0),
+  // What the person pays when they book, to hold the time: the rest at the visit. 0 for none.
+  depositSek: integer("deposit_sek").notNull().default(0),
 });
 
 // One row for each day a business is open. 0 is Sunday. A day with no row is closed.
@@ -95,3 +97,17 @@ export const holdsMade = pgTable(
   },
   (table) => [index("holds_made_from_idx").on(table.madeFrom, table.madeAt)],
 );
+
+// Every deposit paid, as the payment provider reported it: the money that came in. A booking can be
+// gone by the time its deposit arrives (its time ran out and someone else took it), and the money still
+// came in, so the deposit stays with no booking.
+export const deposits = pgTable("deposits", {
+  id: serial().primaryKey(),
+  businessId: businessId(),
+  bookingId: integer("booking_id").references(() => bookings.id, { onDelete: "set null" }),
+  // The payment's id at the provider, like pi_3Qx…
+  paymentIntent: text("payment_intent").notNull(),
+  // In öre, as payment providers count: 200 kr is 20000.
+  amountOre: integer("amount_ore").notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true, mode: "string" }).notNull(),
+});

@@ -127,6 +127,13 @@
       "when": 1794553996660,
       "tag": "0017_count_the_holds_from_each_address",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795011855065,
+      "tag": "0018_take_a_deposit_when_booking",
+      "breakpoints": true
     }
   ]
 }

@@ -115,6 +115,11 @@ export function BookingForm({
         </DialogContent>
       </Dialog>
       <Message formState={shown} />
+      {shown.kind === "pay" && (
+        // The payment provider's card form, from its own address: what's typed in it goes to the
+        // provider, and this page can't read it.
+        <iframe src={shown.form} title="Pay the deposit" className="h-80 w-full rounded-md border border-line-200" />
+      )}
     </form>
   );
 }

@@ -3,9 +3,12 @@
 import { headers } from "next/headers";
 import { refresh, updateTag } from "next/cache";
 import { z } from "zod";
-import { clinicHere } from "./business";
+import { clinicHere, here } from "./business";
 import { emailConfirmLink } from "../server/holds.ts";
-import { addressOf } from "../server/address.ts";
+import { addressOf, originOf } from "../server/address.ts";
+import { startDeposit } from "../server/payments.ts";
+import { dayName } from "./dayName";
+import { clockTime } from "./clockTime";
 import type { FormState } from "./Message";
 
 // What a booking form must hold. The checks in the browser can be skipped: anyone can post to the
@@ -47,6 +50,37 @@ export async function book(previous: FormState, data: FormData): Promise<FormSta
     };
   }
   if (booked.kind !== "held") return { kind: "failed", message: "We couldn't take your booking. Please try again." };
+  if (booked.depositSek > 0) {
+    // The time is held while the person pays the deposit, in the payment provider's card form. The
+    // payment confirms it (see bookings/paid).
+    const { name: businessName } = await clinic.about();
+    const [{ title }] = (await clinic.offers()).filter((s) => s.id === service);
+    let form: string;
+    try {
+      form = await startDeposit({
+        business: await here(),
+        booking: booked.id,
+        amountSek: booked.depositSek,
+        description: businessName + ": " + title + ", " + dayName(date) + " " + clockTime(booked.startsAt),
+        back: originOf(asked) + "/bookings/paid",
+      });
+    } catch (error) {
+      console.error(error);
+      await clinic.cancel(booked.id);
+      return { kind: "failed", message: "We couldn't start the payment. Please try again in a while." };
+    }
+    updateTag("free-times");
+    refresh();
+    return {
+      kind: "pay",
+      form,
+      depositSek: booked.depositSek,
+      name,
+      date,
+      time: booked.startsAt,
+      with: booked.with,
+    };
+  }
   // The time is held. It's the person's once they open the link we email them, which shows that the
   // address is theirs.
   if (!(await emailConfirmLink(email, asked))) {

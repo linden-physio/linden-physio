@@ -27,7 +27,9 @@ function ServiceCard({ service }: { service: Service }) {
       <RadioGroupItem value={service.id} className="mt-1" />
       <span>
         <span className="block font-semibold">{service.title}</span>
-        <span className="block text-sm text-ink-600">{service.minutes} minutes</span>
+        <span className="block text-sm text-ink-600">
+          {service.minutes} minutes{service.depositSek > 0 && ", " + service.depositSek + " kr deposit"}
+        </span>
         <span className="mt-2 block text-sm">{service.line}</span>
       </span>
     </label>

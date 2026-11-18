@@ -2,7 +2,7 @@ import pg from "pg";
 import { and, eq, gt, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import type { NodePgDatabase, NodePgTransaction } from "drizzle-orm/node-postgres";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { bookings, businesses, holdsMade, openingHours, services, staff } from "./schema.ts";
+import { bookings, businesses, deposits, holdsMade, openingHours, services, staff } from "./schema.ts";
 import type { FreeTimes, NewBooking } from "./schemas.ts";
 import { toInstant, fromInstant } from "./clock.ts";
 import { freeTimes, nearestFreeTime, type Booking, type OpeningHours } from "./slots.ts";
@@ -50,8 +50,9 @@ export const HOLDS_PER_EMAIL = 2;
 export const HOLDS_PER_ADDRESS_PER_HOUR = 10;
 
 // A new booking is held, not booked: it counts once the person opens the link in the email.
+// depositSek is what the person pays now to confirm it, or 0: then they confirm it from the email.
 export type Booked =
-  | { kind: "held"; id: string; startsAt: string; with: string; heldUntil: string }
+  | { kind: "held"; id: string; startsAt: string; with: string; heldUntil: string; depositSek: number }
   | { kind: "taken" }
   | { kind: "too-many"; per: "email" | "address" }
   | { kind: "passed" }
@@ -59,7 +60,28 @@ export type Booked =
 export type Cancelled = "cancelled" | "started" | "missing";
 
 // One of the things a business offers.
-export type Service = { id: string; title: string; minutes: number; priceSek: number; line: string };
+export type Service = {
+  id: string;
+  title: string;
+  minutes: number;
+  priceSek: number;
+  depositSek: number;
+  line: string;
+};
+
+// One booking, as the person who made it sees it after paying.
+export type OneBooking = {
+  startsAt: string;
+  service: string;
+  with: string;
+  email: string;
+  confirmed: boolean;
+  depositSek: number;
+};
+
+// What became of a booking when its deposit came in: confirmed, or gone, because its time ran out and
+// someone else took it before the payment was made.
+export type Paid = "confirmed" | "gone";
 
 // One of someone's own bookings, on their page.
 export type OwnBooking = { id: string; startsAt: string; service: string; with: string };
@@ -115,6 +137,7 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
         title: services.title,
         minutes: services.minutes,
         priceSek: services.priceSek,
+        depositSek: services.depositSek,
         line: services.line,
       })
       .from(services)
@@ -233,6 +256,10 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     const { date, time } = fromInstant(booking.start);
     const length = await minutesFor(booking.service);
     if (length === null) return { kind: "no-service" };
+    const [{ depositSek }] = await db
+      .select({ depositSek: services.depositSek })
+      .from(services)
+      .where(and(eq(services.id, booking.service), ofBusiness.services));
     // Count, then hold: another request from the same address or email can count between the two, and
     // a bot that sends thirty at once gets them all counted before any is held. So the requests from one
     // internet address, and for one email, wait for each other here, until this transaction ends.
@@ -280,6 +307,7 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
           startsAt: toInstant(date, time),
           with: firstName(person.name),
           heldUntil: new Date(made.heldUntil!).toISOString(),
+          depositSek,
         };
       } catch (error) {
         // The table's rule refused it: 23P01 (exclusion constraint), or now and then 40P01, when two
@@ -326,6 +354,44 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     // Nothing deleted: either there's no such booking (of theirs), or it has already started.
     const [left] = await db.select({ id: bookings.id }).from(bookings).where(ours);
     return left ? "started" : "missing";
+  }
+
+  // A booking by its id, for the page the person comes back to after paying. Null if it's gone.
+  async function booking(id: string): Promise<OneBooking | null> {
+    const [row] = await db
+      .select({
+        startsAt: bookings.startsAt,
+        service: services.title,
+        with: staff.name,
+        email: bookings.email,
+        confirmed: sql<boolean>`${bookings.confirmedAt} IS NOT NULL`,
+        depositSek: services.depositSek,
+      })
+      .from(bookings)
+      .innerJoin(services, eq(bookings.service, services.id))
+      .innerJoin(staff, eq(bookings.staffId, staff.id))
+      .where(and(ofBusiness.bookings, eq(bookings.publicId, id)));
+    return row ? { ...row, startsAt: new Date(row.startsAt).toISOString(), with: firstName(row.with) } : null;
+  }
+
+  // A booking's deposit has been paid: keep the money's record, and confirm the booking. A hold whose
+  // 15 minutes are up is still confirmed if its row is there, because then nobody has taken its time:
+  // the table's rule against overlaps would have refused them. If the row is gone, the money still
+  // came in, so the deposit is kept with no booking.
+  async function paid(id: string, paymentIntent: string, amountOre: number): Promise<Paid> {
+    const [confirmed] = await db
+      .update(bookings)
+      .set({ confirmedAt: sql`coalesce(${bookings.confirmedAt}, ${now().toISOString()})`, heldUntil: null })
+      .where(and(ofBusiness.bookings, eq(bookings.publicId, id)))
+      .returning({ id: bookings.id });
+    await db.insert(deposits).values({
+      businessId: business,
+      bookingId: confirmed?.id ?? null,
+      paymentIntent,
+      amountOre,
+      receivedAt: now().toISOString(),
+    });
+    return confirmed ? "confirmed" : "gone";
   }
 
   // A day at the clinic, with every booking and who it's for. Only for the staff.
@@ -392,7 +458,7 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     return row?.staffId ?? null;
   }
 
-  return { about, offers, freeTimesOn, book, confirm, cancel, day, bookingsFor, bookedWith };
+  return { about, offers, freeTimesOn, book, confirm, cancel, day, bookingsFor, bookedWith, booking, paid };
 }
 
 type Clinic = ReturnType<typeof clinicIn>;
@@ -422,6 +488,8 @@ export function makeClinic(db: NodePgDatabase, business: string, now: () => Date
     day: inBusiness((c) => c.day),
     bookingsFor: inBusiness((c) => c.bookingsFor),
     bookedWith: inBusiness((c) => c.bookedWith),
+    booking: inBusiness((c) => c.booking),
+    paid: inBusiness((c) => c.paid),
   };
 }
 
