@@ -27,6 +27,11 @@ test("a paid deposit confirms the booking, and is kept even when the booking is 
   assert.equal(maja.depositSek, 200);
   assert.equal(await clinic.paid(maja.id, "pi_maja", 20000), "confirmed");
   assert.equal((await clinic.booking(maja.id))?.confirmed, true);
+  const paidVisits = (await clinic.day("2026-11-10")).people.flatMap((person) => person.visits);
+  assert.deepEqual(
+    paidVisits.map((visit) => [visit.name, visit.depositSek]),
+    [["Maja", 200]],
+  );
 
   // Tove holds the other physiotherapist, pays slowly on her bank's page, and her 15 minutes run out.
   // Nobody has taken the time, so her row is still there: the payment still confirms it.

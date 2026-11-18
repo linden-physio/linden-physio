@@ -96,6 +96,8 @@ export type Visit = {
   service: string;
   priceSek: number;
   held: boolean;
+  // The deposit paid for it, in kronor, or 0.
+  depositSek: number;
 };
 // A day at the clinic, for the staff: each physiotherapist's bookings, and the opening hours.
 export type Day = { hours: OpeningHours; people: { id: number; name: string; visits: Visit[] }[] };
@@ -408,6 +410,7 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
         service: services.title,
         priceSek: services.priceSek,
         held: sql<boolean>`${bookings.confirmedAt} IS NULL`,
+        depositSek: sql<number>`coalesce((SELECT sum(d.amount_ore) / 100 FROM deposits d WHERE d.booking_id = bookings.id), 0)::int`,
       })
       .from(bookings)
       .innerJoin(services, eq(bookings.service, services.id))

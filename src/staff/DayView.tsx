@@ -113,7 +113,10 @@ export function DayView({ date, day, who }: { date: string; day: Day; who: Staff
                       <div>
                         <span className="font-medium">{visit.start}</span> {visit.name}
                         {visit.held && " (held, not confirmed)"}
-                        <span className="block text-ink-600">{visit.service}</span>
+                        <span className="block text-ink-600">
+                          {visit.service}
+                          {visit.depositSek > 0 && ", " + visit.depositSek + " kr paid"}
+                        </span>
                       </div>
                       {may(who, { do: "cancel", staffId: person.id }) && (
                         <form action={cancelVisit}>
