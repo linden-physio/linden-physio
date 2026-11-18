@@ -6,6 +6,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { auth } from "../server/auth.ts";
 import { clinicHere } from "./business";
+import { cancelBooking } from "../server/refunds.ts";
 import { may } from "../server/permissions.ts";
 import { staffOnly } from "./session";
 
@@ -33,7 +34,9 @@ export async function cancelVisit(data: FormData) {
   const clinic = await clinicHere();
   const staffId = await clinic.bookedWith(id);
   if (staffId === null || !may(who, { do: "cancel", staffId })) return;
-  await clinic.cancel(id);
+  // The clinic cancels: the deposit always comes back.
+  const { failed } = await cancelBooking(clinic, id, "clinic");
+  if (failed) console.error("Cancelled " + id + ", but its deposit couldn't be paid back: do it by hand.");
   updateTag("free-times");
   refresh();
 }

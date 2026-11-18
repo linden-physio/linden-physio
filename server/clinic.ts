@@ -2,7 +2,17 @@ import pg from "pg";
 import { and, eq, gt, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import type { NodePgDatabase, NodePgTransaction } from "drizzle-orm/node-postgres";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { bookings, businesses, deposits, holdsMade, openingHours, providerEvents, services, staff } from "./schema.ts";
+import {
+  bookings,
+  businesses,
+  deposits,
+  holdsMade,
+  openingHours,
+  providerEvents,
+  refunds,
+  services,
+  staff,
+} from "./schema.ts";
 import type { FreeTimes, NewBooking } from "./schemas.ts";
 import { toInstant, fromInstant } from "./clock.ts";
 import { freeTimes, nearestFreeTime, type Booking, type OpeningHours } from "./slots.ts";
@@ -84,6 +94,8 @@ export type OneBooking = {
 export type Paid = "confirmed" | "gone" | "heard already";
 // An event from the payment provider: its id and what it says happened.
 export type EventSeen = { id: string; type: string };
+// A deposit paid for a booking, and how much of it is still ours to pay back, in öre.
+export type Deposit = { id: number; paymentIntent: string; amountOre: number };
 
 // One of someone's own bookings, on their page.
 export type OwnBooking = { id: string; startsAt: string; service: string; with: string };
@@ -414,6 +426,34 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     return confirmed ? "confirmed" : "gone";
   }
 
+  // The deposits paid for a booking, less what's been paid back already, and when the booking starts.
+  async function depositsOf(id: string): Promise<{ startsAt: string; deposits: Deposit[] } | null> {
+    const [found] = await db
+      .select({ id: bookings.id, startsAt: bookings.startsAt })
+      .from(bookings)
+      .where(and(ofBusiness.bookings, eq(bookings.publicId, id)));
+    if (!found) return null;
+    const paid = await db
+      .select({
+        id: deposits.id,
+        paymentIntent: deposits.paymentIntent,
+        // Written out with table names: inside sql``, drizzle leaves column names bare, and a bare "id"
+        // in the inner query would be the refund's own.
+        amountOre: sql<number>`(deposits.amount_ore - coalesce((SELECT sum(r.amount_ore) FROM refunds r WHERE r.deposit_id = deposits.id), 0))::int`,
+      })
+      .from(deposits)
+      .where(and(eq(deposits.businessId, business), eq(deposits.bookingId, found.id)));
+    return { startsAt: new Date(found.startsAt).toISOString(), deposits: paid.filter((d) => d.amountOre > 0) };
+  }
+
+  // A deposit has been paid back: the provider's refund, once.
+  async function refunded(deposit: number, providerRefund: string, amountOre: number) {
+    await db
+      .insert(refunds)
+      .values({ businessId: business, depositId: deposit, providerRefund, amountOre, refundedAt: now().toISOString() })
+      .onConflictDoNothing();
+  }
+
   // A day at the clinic, with every booking and who it's for. Only for the staff.
   async function day(date: string): Promise<Day> {
     const hours = await hoursByWeekday();
@@ -479,7 +519,21 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     return row?.staffId ?? null;
   }
 
-  return { about, offers, freeTimesOn, book, confirm, cancel, day, bookingsFor, bookedWith, booking, paid };
+  return {
+    about,
+    offers,
+    freeTimesOn,
+    book,
+    confirm,
+    cancel,
+    day,
+    bookingsFor,
+    bookedWith,
+    booking,
+    paid,
+    depositsOf,
+    refunded,
+  };
 }
 
 type Clinic = ReturnType<typeof clinicIn>;
@@ -511,6 +565,8 @@ export function makeClinic(db: NodePgDatabase, business: string, now: () => Date
     bookedWith: inBusiness((c) => c.bookedWith),
     booking: inBusiness((c) => c.booking),
     paid: inBusiness((c) => c.paid),
+    depositsOf: inBusiness((c) => c.depositsOf),
+    refunded: inBusiness((c) => c.refunded),
   };
 }
 

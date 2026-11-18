@@ -8,6 +8,7 @@ import { businessFor } from "./businesses.ts";
 import { emailConfirmLink } from "./holds.ts";
 import { addressOf } from "./address.ts";
 import { signedInAs } from "./auth.ts";
+import { cancelBooking } from "./refunds.ts";
 
 // A 400 answer that names each field that failed, and why.
 function problems(error: z.ZodError) {
@@ -72,7 +73,7 @@ export function makeApp(
     if (email === null) return c.json({ error: "Sign in from the link in your email to cancel a booking." }, 401);
     const id = BookingId.safeParse(c.req.param("id"));
     if (!id.success) return c.json(problems(id.error), 400);
-    const cancelled = await c.var.clinic.cancel(id.data, email);
+    const { cancelled } = await cancelBooking(c.var.clinic, id.data, { person: email }, now);
     if (cancelled === "cancelled") return c.body(null, 204);
     if (cancelled === "started") return c.json({ error: "This booking has already started." }, 409);
     return c.json({ error: "There is no such booking." }, 404);

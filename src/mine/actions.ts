@@ -7,6 +7,7 @@ import { z } from "zod";
 import { isAPIError } from "better-auth/api";
 import { auth } from "../../server/auth.ts";
 import { clinicHere } from "../business";
+import { cancelBooking } from "../../server/refunds.ts";
 
 export type LinkState = { kind: "idle" } | { kind: "sent"; email: string } | { kind: "invalid"; message: string };
 
@@ -50,7 +51,8 @@ export async function cancelOwn(previous: CancelState, data: FormData): Promise<
   if (!session) redirect("/bookings");
   const id = z.uuid().safeParse(data.get("id"));
   if (!id.success) return { kind: "failed", message: "We couldn't find that booking." };
-  const cancelled = await (await clinicHere()).cancel(id.data, session.user.email);
+  const { cancelled, failed } = await cancelBooking(await clinicHere(), id.data, { person: session.user.email });
+  if (failed) console.error("Cancelled " + id.data + ", but its deposit couldn't be paid back: do it by hand.");
   if (cancelled === "started") return { kind: "failed", message: "That booking has already started. Please email us." };
   if (cancelled === "missing")
     return { kind: "failed", message: "We couldn't find that booking. It may be cancelled already." };

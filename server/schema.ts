@@ -121,3 +121,15 @@ export const providerEvents = pgTable("provider_events", {
   type: text().notNull(),
   receivedAt: timestamp("received_at", { withTimezone: true, mode: "string" }).notNull(),
 });
+
+// Each deposit paid back, by the provider's id for the refund (re_…): money that went out.
+export const refunds = pgTable("refunds", {
+  id: serial().primaryKey(),
+  businessId: businessId(),
+  depositId: integer("deposit_id")
+    .notNull()
+    .references(() => deposits.id),
+  providerRefund: text("provider_refund").notNull().unique(),
+  amountOre: integer("amount_ore").notNull(),
+  refundedAt: timestamp("refunded_at", { withTimezone: true, mode: "string" }).notNull(),
+});

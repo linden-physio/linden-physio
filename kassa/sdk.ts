@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 // Kassa's library for the shop's server, as stripe is Stripe's: it knows Kassa's addresses and sends the
 // secret key with every request.
@@ -71,6 +71,25 @@ function encode(params: Record<string, string | number | Record<string, string> 
 
 export function kassa(secretKey: string, base: string) {
   async function call<T>(
+    method: string,
+    path: string,
+    params?: Parameters<typeof encode>[0],
+    idempotencyKey?: string,
+  ): Promise<T> {
+    // When the connection fails, the request may or may not have arrived: try again, up to twice, with
+    // the same Idempotency-Key, so that Kassa does it at most once. With no key given, make one, as
+    // stripe's library does.
+    const key = idempotencyKey ?? (method === "POST" ? randomUUID() : undefined);
+    for (let tries = 1; ; tries++) {
+      try {
+        return await send<T>(method, path, params, key);
+      } catch (error) {
+        if (error instanceof KassaError || tries === 3) throw error;
+      }
+    }
+  }
+
+  async function send<T>(
     method: string,
     path: string,
     params?: Parameters<typeof encode>[0],

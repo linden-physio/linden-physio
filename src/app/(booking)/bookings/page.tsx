@@ -76,34 +76,39 @@ async function Bookings({ searchParams }: Pick<PageProps<"/bookings">, "searchPa
       {booked.length === 0 ? (
         <p>You have no bookings coming up.</p>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {booked.map((booking) => {
-            const when =
-              dayName(booking.startsAt.slice(0, 10)) +
-              " " +
-              new Date(booking.startsAt).toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "long",
-                timeZone: "Europe/Stockholm",
-              }) +
-              ", " +
-              clockTime(booking.startsAt);
-            return (
-              <li
-                key={booking.id}
-                className="flex flex-wrap items-start justify-between gap-4 rounded-md border border-line-200 bg-surface p-4"
-              >
-                <div>
-                  <p className="font-semibold">{when}</p>
-                  <p className="text-ink-600">
-                    {booking.service} with {booking.with}
-                  </p>
-                </div>
-                <CancelButton id={booking.id} label={when} />
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          <p className="text-ink-600">
+            Cancel at least 24 hours before, and we pay your deposit back. Later than that, we keep it.
+          </p>
+          <ul className="flex flex-col gap-3">
+            {booked.map((booking) => {
+              const when =
+                dayName(booking.startsAt.slice(0, 10)) +
+                " " +
+                new Date(booking.startsAt).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "long",
+                  timeZone: "Europe/Stockholm",
+                }) +
+                ", " +
+                clockTime(booking.startsAt);
+              return (
+                <li
+                  key={booking.id}
+                  className="flex flex-wrap items-start justify-between gap-4 rounded-md border border-line-200 bg-surface p-4"
+                >
+                  <div>
+                    <p className="font-semibold">{when}</p>
+                    <p className="text-ink-600">
+                      {booking.service} with {booking.with}
+                    </p>
+                  </div>
+                  <CancelButton id={booking.id} label={when} />
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
       <form action={forgetMe}>
         <button type="submit" className="text-brand-700 underline">
