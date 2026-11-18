@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   // Links fetch the parts of a page that don't depend on its address ahead of time, once per route.
   partialPrefetching: true,
+  // ssh2 (the SFTP client for the accounting file) loads a compiled add-on, which the bundler can't
+  // pack: leave it to Node.
+  serverExternalPackages: ["ssh2"],
 };
 
 // withPayload adds what Payload's editor needs to be built with the app.

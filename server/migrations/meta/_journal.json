@@ -162,6 +162,13 @@
       "when": 1795013487017,
       "tag": "0022_keep_the_work_to_do_in_a_table",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795013799294,
+      "tag": "0023_keep_each_nights_file",
+      "breakpoints": true
     }
   ]
 }

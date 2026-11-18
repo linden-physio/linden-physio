@@ -1,4 +1,17 @@
-import { pgTable, serial, timestamp, text, integer, time, index, uuid, primaryKey, jsonb } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  timestamp,
+  text,
+  integer,
+  time,
+  index,
+  uuid,
+  primaryKey,
+  jsonb,
+  date,
+  unique,
+} from "drizzle-orm/pg-core";
 
 // The app's tables, described in TypeScript. drizzle-kit compares this file with the migrations
 // so far and writes the SQL for what changed.
@@ -155,4 +168,21 @@ export const jobs = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
   (table) => [index("jobs_due_idx").on(table.runAt)],
+);
+
+// Each night's file to the accounting system: what money came in and went out that day.
+export const exports = pgTable(
+  "exports",
+  {
+    id: serial().primaryKey(),
+    businessId: businessId(),
+    // The day the file is about, on the clinic's clock.
+    day: date({ mode: "string" }).notNull(),
+    name: text().notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true, mode: "string" }).notNull(),
+    // "sent", then what the receipt said: "accepted" or "rejected".
+    status: text().notNull(),
+    receipt: text(),
+  },
+  (table) => [unique().on(table.businessId, table.day)],
 );
