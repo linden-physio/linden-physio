@@ -5,9 +5,10 @@ import { db } from "../server/db.ts";
 
 // Runs before every request for a page or the API, before anything else.
 export async function proxy(request: NextRequest) {
-  // Staff pages: someone with no session cookie at all is sent to sign in. This is only a first check:
+  // Staff pages, and the CMS's editor: someone with no session cookie at all is sent to sign in. This is only a first check:
   // it doesn't look the token up, so it can't tell a real session from a made-up cookie.
-  if (request.nextUrl.pathname.startsWith("/staff") && !getSessionCookie(request)) {
+  const path = request.nextUrl.pathname;
+  if ((path.startsWith("/staff") || path === "/cms" || path.startsWith("/cms/")) && !getSessionCookie(request)) {
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
   // Which business the request is for, from the address the browser asked for: lindenphysio.com is

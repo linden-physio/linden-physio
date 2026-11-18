@@ -2,11 +2,11 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { z } from "zod";
-import { about, clinicHere, here } from "../../../../business";
-import { provider } from "../../../../../server/payments.ts";
-import { when } from "../../../../../server/confirmations.ts";
-import { setting } from "../../../../../server/env.ts";
-import { originOf } from "../../../../../server/address.ts";
+import { about, clinicHere, here } from "../../../../../business";
+import { provider } from "../../../../../../server/payments.ts";
+import { when } from "../../../../../../server/confirmations.ts";
+import { setting } from "../../../../../../server/env.ts";
+import { originOf } from "../../../../../../server/address.ts";
 import { headers } from "next/headers";
 
 export async function generateMetadata(): Promise<Metadata> {

@@ -10,7 +10,8 @@
     "moduleResolution": "bundler",
     "types": ["node"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@payload-config": ["./src/payload.config.ts"]
     },
     "allowJs": true,
     "skipLibCheck": true,
@@ -34,5 +35,5 @@
     "dist/types/**/*.ts",
     "dist/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "server/payload-migrations"]
 }

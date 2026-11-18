@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
-import { signInWithMicrosoft } from "../../staffActions";
-import { about, here } from "../../business";
-import { LinkForm } from "../../mine/LinkForm";
+import { signInWithMicrosoft } from "../../../staffActions";
+import { about, here } from "../../../business";
+import { LinkForm } from "../../../mine/LinkForm";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "Sign in · " + (await about(await here())).name };

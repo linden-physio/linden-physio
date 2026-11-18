@@ -2,14 +2,15 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
-import { clinic, type Service } from "../../../server/clinic.ts";
-import { NextFree } from "../../NextFree";
-import { ServiceCards } from "../../ServiceCards";
-import { DayPicker } from "../../DayPicker";
-import { Booking } from "../../Booking";
-import { Times } from "../../Times";
-import { about, here } from "../../business";
-import type { FreeTimes } from "../../../server/schemas.ts";
+import { clinic, type Service } from "../../../../server/clinic.ts";
+import { NextFree } from "../../../NextFree";
+import { ServiceCards } from "../../../ServiceCards";
+import { DayPicker } from "../../../DayPicker";
+import { Booking } from "../../../Booking";
+import { Times } from "../../../Times";
+import { about, here } from "../../../business";
+import { wordsFor } from "../../../words";
+import type { FreeTimes } from "../../../../server/schemas.ts";
 
 // The page's title is the business's name, so it waits for the address too.
 export async function generateMetadata(): Promise<Metadata> {
@@ -66,7 +67,11 @@ function freeTimesFor(business: string, { day, service }: Choice) {
 // server for each visit and streamed into the page.
 export default function Page({ searchParams }: PageProps<"/">) {
   const business = here();
-  const services = business.then(offers);
+  // The services from our tables, with their lines from the CMS where it has one.
+  const services = business.then(async (id) => {
+    const [list, words] = await Promise.all([offers(id), wordsFor(id)]);
+    return list.map((service) => ({ ...service, line: words.services[service.id] ?? service.line }));
+  });
   const choice = Promise.all([searchParams, services]).then(([params, list]) => choiceFrom(params, list));
   const free = Promise.all([business, choice]).then(([id, chosen]) => freeTimesFor(id, chosen));
   return (
@@ -87,11 +92,12 @@ export default function Page({ searchParams }: PageProps<"/">) {
 }
 
 async function Name({ business }: { business: Promise<string> }) {
-  const { name } = await about(await business);
+  const id = await business;
+  const [{ name }, words] = await Promise.all([about(id), wordsFor(id)]);
   return (
     <div>
       <h1 className="text-display">{name}</h1>
-      <p className="mt-2 text-ink-600">Book a time that suits you.</p>
+      <p className="mt-2 text-ink-600">{words.welcome ?? "Book a time that suits you."}</p>
     </div>
   );
 }

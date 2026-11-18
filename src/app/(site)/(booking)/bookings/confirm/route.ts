@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "../../../../../server/auth.ts";
-import { clinicHere } from "../../../../business";
+import { auth } from "../../../../../../server/auth.ts";
+import { clinicHere } from "../../../../../business";
 
 // Where the link that confirms a booking lands, after Better Auth has signed the person in by it. The
 // session says whose address it is; confirm that address's holds, and show them their bookings. The

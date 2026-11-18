@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
-import { here } from "../../../../business";
-import { provider } from "../../../../../server/payments.ts";
+import { here } from "../../../../../business";
+import { provider } from "../../../../../../server/payments.ts";
 
 // Where the payment provider sends the person back after its card form, or after their bank's page,
 // with ?payment_intent=pi_… Only to show them how it went: the booking is confirmed when Kassa tells

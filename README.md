@@ -29,3 +29,12 @@ this repository that behaves like the real one, with its own database:
   Idempotency-Keys work as Stripe's do. It moves no money and takes only Stripe's test card numbers,
   like 4242 4242 4242 4242, or 4000 0027 6000 3184 for 3-D Secure. `npm run kassa:cli -- events` lists
   what happened.
+
+## The words on the booking page
+
+The line under the business's name and the line about each service come from Payload, a CMS that runs
+inside this app (src/payload.config.ts). Its editor is at http://localhost:5173/cms, for staff who may
+change the words (the owner), signed in as they always are. Its tables are in the same database, in a
+schema called "payload"; `npm run migrate` makes them with Payload's own migrations
+(server/payload-migrations/). Publishing makes the booking page forget its kept words. Prices and
+everything a booking owns stay in our own tables.

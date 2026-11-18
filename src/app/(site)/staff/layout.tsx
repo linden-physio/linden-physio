@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { CalendarDays } from "lucide-react";
-import { SignedInAs } from "../../staff/SignedInAs";
-import { about, here } from "../../business";
+import { CalendarDays, PenLine } from "lucide-react";
+import { signedIn } from "../../../session";
+import { may } from "../../../../server/permissions.ts";
+import { SignedInAs } from "../../../staff/SignedInAs";
+import { about, here } from "../../../business";
 
 // The staff's pages: the clinic's name and the menu on the left, the page on the right.
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
@@ -21,10 +23,24 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           <Link href="/staff" className="flex items-center gap-2 rounded-md bg-surface px-3 py-2 font-medium">
             <CalendarDays className="size-4" /> Day
           </Link>
+          <Suspense fallback={null}>
+            <Words />
+          </Suspense>
         </nav>
       </aside>
       <main className="flex-1 bg-surface p-4 md:p-8">{children}</main>
     </div>
+  );
+}
+
+// The editor for the words on the booking page, for those who may change them.
+async function Words() {
+  const who = await signedIn();
+  if (!who || !may(who, { do: "edit the words" })) return null;
+  return (
+    <a href="/cms" className="mt-1 flex items-center gap-2 rounded-md px-3 py-2 font-medium">
+      <PenLine className="size-4" /> Words on the site
+    </a>
   );
 }
 

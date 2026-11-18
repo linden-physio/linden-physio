@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { z } from "zod";
-import { about, clinicHere, here } from "../../business";
-import { fromInstant } from "../../../server/clock.ts";
-import { DayView } from "../../staff/DayView";
-import { staffOnly } from "../../session";
+import { about, clinicHere, here } from "../../../business";
+import { fromInstant } from "../../../../server/clock.ts";
+import { DayView } from "../../../staff/DayView";
+import { staffOnly } from "../../../session";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "Day · " + (await about(await here())).name };

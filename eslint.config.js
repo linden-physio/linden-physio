@@ -6,7 +6,14 @@ import jsxA11y from "eslint-plugin-jsx-a11y";
 import globals from "globals";
 
 export default defineConfig([
-  globalIgnores(["dist", ".next", "next-env.d.ts"]),
+  globalIgnores([
+    "dist",
+    ".next",
+    "next-env.d.ts",
+    "src/payload-types.ts",
+    "src/app/(payload)/cms/importMap.js",
+    "server/payload-migrations",
+  ]),
   {
     files: ["**/*.{ts,tsx}"],
     extends: [

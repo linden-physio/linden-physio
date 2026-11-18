@@ -8,12 +8,16 @@ export type Action =
   // What the day's bookings are worth.
   | { do: "see the takings" }
   // Cancel a booking with a physiotherapist.
-  | { do: "cancel"; staffId: number };
+  | { do: "cancel"; staffId: number }
+  // Change the words on the business's pages, in the CMS.
+  | { do: "edit the words" };
 
 export function may(who: Who, action: Action): boolean {
   if (who.role === "owner") return true;
   switch (action.do) {
     case "see the takings":
+      return false;
+    case "edit the words":
       return false;
     case "cancel":
       // A physio may cancel their own patients' bookings.

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { about, here } from "../../business";
+import { about, here } from "../../../business";
 
 // The pages for people who book: the booking page and their own bookings, with links at the bottom.
 export default function BookingLayout({ children }: { children: React.ReactNode }) {

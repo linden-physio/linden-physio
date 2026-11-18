@@ -2,15 +2,15 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
-import { auth } from "../../../../server/auth.ts";
-import { clinicHere } from "../../../business";
-import { dayName } from "../../../dayName";
-import { clockTime } from "../../../clockTime";
-import { LinkForm } from "../../../mine/LinkForm";
-import { forgetMe } from "../../../mine/actions";
-import { CancelButton } from "../../../mine/CancelButton";
+import { auth } from "../../../../../server/auth.ts";
+import { clinicHere } from "../../../../business";
+import { dayName } from "../../../../dayName";
+import { clockTime } from "../../../../clockTime";
+import { LinkForm } from "../../../../mine/LinkForm";
+import { forgetMe } from "../../../../mine/actions";
+import { CancelButton } from "../../../../mine/CancelButton";
 
-import { about, here } from "../../../business";
+import { about, here } from "../../../../business";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "Your bookings · " + (await about(await here())).name };

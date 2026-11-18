@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withPayload } from "@payloadcms/next/withPayload";
 
 const nextConfig: NextConfig = {
   // The React Compiler, as in vite.config.ts: it remembers what each component worked out, so we don't have to.
@@ -10,4 +11,5 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
 };
 
-export default nextConfig;
+// withPayload adds what Payload's editor needs to be built with the app.
+export default withPayload(nextConfig);

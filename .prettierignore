@@ -1,2 +1,5 @@
 package-lock.json
 server/migrations/
+src/payload-types.ts
+src/app/(payload)/cms/importMap.js
+server/payload-migrations/
