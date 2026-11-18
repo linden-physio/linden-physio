@@ -35,8 +35,7 @@ export async function cancelVisit(data: FormData) {
   const staffId = await clinic.bookedWith(id);
   if (staffId === null || !may(who, { do: "cancel", staffId })) return;
   // The clinic cancels: the deposit always comes back.
-  const { failed } = await cancelBooking(clinic, id, "clinic");
-  if (failed) console.error("Cancelled " + id + ", but its deposit couldn't be paid back: do it by hand.");
+  await cancelBooking(clinic, id, "clinic");
   updateTag("free-times");
   refresh();
 }

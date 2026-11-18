@@ -8,6 +8,7 @@ import { isAPIError } from "better-auth/api";
 import { auth } from "../../server/auth.ts";
 import { clinicHere } from "../business";
 import { cancelBooking } from "../../server/refunds.ts";
+import { log } from "../../server/log.ts";
 
 export type LinkState = { kind: "idle" } | { kind: "sent"; email: string } | { kind: "invalid"; message: string };
 
@@ -32,7 +33,7 @@ export async function sendBookingsLink(previous: LinkState, data: FormData): Pro
       };
     }
     // Anything else: the mail couldn't be sent. Say so, and keep the reason in the server's log.
-    console.error(error);
+    log("error", "sign-in link not sent", {}, error);
     return { kind: "invalid", message: "We couldn't send the email just now. Please try again later, or email us." };
   }
   return { kind: "sent", email: email.data };
@@ -51,8 +52,7 @@ export async function cancelOwn(previous: CancelState, data: FormData): Promise<
   if (!session) redirect("/bookings");
   const id = z.uuid().safeParse(data.get("id"));
   if (!id.success) return { kind: "failed", message: "We couldn't find that booking." };
-  const { cancelled, failed } = await cancelBooking(await clinicHere(), id.data, { person: session.user.email });
-  if (failed) console.error("Cancelled " + id.data + ", but its deposit couldn't be paid back: do it by hand.");
+  const { cancelled } = await cancelBooking(await clinicHere(), id.data, { person: session.user.email });
   if (cancelled === "started") return { kind: "failed", message: "That booking has already started. Please email us." };
   if (cancelled === "missing")
     return { kind: "failed", message: "We couldn't find that booking. It may be cancelled already." };

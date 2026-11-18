@@ -1,6 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { Resend } from "resend";
 import { setting } from "./env.ts";
+import { log } from "./log.ts";
 
 // A mail to send. from is like "Linden Physio <hello@lindenphysio.com>".
 type Mail = { from: string; to: string; subject: string; text: string; html: string };
@@ -29,4 +30,6 @@ export async function sendMail(mail: Mail, idempotencyKey?: string) {
   const key = process.env.RESEND_API_KEY;
   if (key) await sendWithResend(mail, key, idempotencyKey);
   else await transport().sendMail(mail);
+  // Not who it's to: the booking's id (from the job) says that, to those who may look it up.
+  log("info", "mail sent", { subject: mail.subject, via: key ? "resend" : "smtp", idempotencyKey });
 }

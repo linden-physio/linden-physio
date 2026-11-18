@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { jobs } from "./schema.ts";
+import { about, continuing, log, traceparent } from "./log.ts";
 
 // A job queue on one Postgres table (jobs, in schema.ts), by hand: what pg-boss, Graphile Worker,
 // Inngest or Vercel Queues give teams ready-made, with dashboards and more.
@@ -22,7 +23,8 @@ export async function enqueue(
     .values({
       businessId: job.business,
       kind: job.kind,
-      payload: job.payload,
+      // The trace that asked for the work, so the work joins it when it's done.
+      payload: { ...job.payload, ...(traceparent() ? { trace: traceparent()! } : {}) },
       key: job.key,
       runAt: (job.runAt ?? new Date()).toISOString(),
     })
@@ -80,7 +82,12 @@ export async function work(
       try {
         const handler = handlers[job.kind];
         if (!handler) throw new Error("No handler for jobs of kind " + job.kind);
-        await handler(job);
+        await continuing("job " + job.kind, job.payload.trace, () =>
+          about({ job: job.id, kind: job.kind, booking: job.payload.booking, attempt: job.attempts + 1 }, async () => {
+            await handler(job);
+            log("info", "job done");
+          }),
+        );
         await tx.execute(
           sql`UPDATE jobs SET done_at = ${now().toISOString()}, attempts = attempts + 1 WHERE id = ${job.id}`,
         );
@@ -88,6 +95,18 @@ export async function work(
       } catch (error) {
         const attempts = job.attempts + 1;
         const later = new Date(now().getTime() + backoff(attempts)).toISOString();
+        log(
+          attempts < MAX_ATTEMPTS ? "warn" : "error",
+          "job failed",
+          {
+            job: job.id,
+            kind: job.kind,
+            booking: job.payload.booking,
+            attempt: attempts,
+            retryAt: attempts < MAX_ATTEMPTS ? later : null,
+          },
+          error,
+        );
         await tx.execute(
           sql`UPDATE jobs SET attempts = ${attempts}, last_error = ${String(error)}, run_at = ${later} WHERE id = ${job.id}`,
         );

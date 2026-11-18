@@ -1,4 +1,5 @@
-# Postgres for this computer, the same major version as production, and Mailpit to catch mail.
+# Postgres for this computer, the same major version as production, Mailpit to catch mail, and Jaeger
+# to read traces.
 #   docker compose up -d     starts it in the background
 #   docker compose down      stops it (the data stays in the volume)
 services:
@@ -22,6 +23,13 @@ services:
     ports:
       - "1025:1025"
       - "8025:8025"
+
+  # Reads the traces the app sends (src/instrumentation.ts) at http://localhost:16686.
+  jaeger:
+    image: jaegertracing/jaeger:2.12.0
+    ports:
+      - "16686:16686"
+      - "4318:4318"
 
 volumes:
   postgres-data:

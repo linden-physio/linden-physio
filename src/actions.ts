@@ -10,6 +10,7 @@ import { startDeposit } from "../server/payments.ts";
 import { dayName } from "./dayName";
 import { clockTime } from "./clockTime";
 import type { FormState } from "./Message";
+import { log } from "../server/log.ts";
 
 // What a booking form must hold. The checks in the browser can be skipped: anyone can post to the
 // action's address with any fields, so the action checks everything again.
@@ -50,6 +51,7 @@ export async function book(previous: FormState, data: FormData): Promise<FormSta
     };
   }
   if (booked.kind !== "held") return { kind: "failed", message: "We couldn't take your booking. Please try again." };
+  log("info", "booking held", { booking: booked.id, business: await here(), service, start: booked.startsAt });
   if (booked.depositSek > 0) {
     // The time is held while the person pays the deposit, in the payment provider's card form. The
     // payment confirms it (see bookings/paid).
@@ -64,8 +66,9 @@ export async function book(previous: FormState, data: FormData): Promise<FormSta
         description: businessName + ": " + title + ", " + dayName(date) + " " + clockTime(booked.startsAt),
         back: originOf(asked) + "/bookings/paid",
       });
+      log("info", "deposit asked", { booking: booked.id, depositSek: booked.depositSek });
     } catch (error) {
-      console.error(error);
+      log("error", "payment not started", { booking: booked.id }, error);
       await clinic.cancel(booked.id);
       return { kind: "failed", message: "We couldn't start the payment. Please try again in a while." };
     }

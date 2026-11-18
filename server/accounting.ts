@@ -6,6 +6,7 @@ import { enqueue, type Job } from "./jobs.ts";
 import { fromInstant } from "./clock.ts";
 import { db } from "./db.ts";
 import { setting } from "./env.ts";
+import { log } from "./log.ts";
 
 // The nightly file to the accounting system (Ekonomihuset), in SIE 4, the Swedish standard. A deposit
 // isn't income yet: it's money paid ahead, owed back if the visit doesn't happen. So it goes from the
@@ -179,6 +180,7 @@ export async function sendFile(job: Job) {
   const name = business.id + "-" + day.replaceAll("-", "") + ".se";
   const bytes = encode(sie(business.name, day, await movementsOn(db(), business.id, day), new Date()));
   await send(setting("ACCOUNTING_URL"), name, bytes);
+  log("info", "accounting file sent", { business: business.id, day, name, bytes: bytes.length });
   await db()
     .insert(exports)
     .values({ businessId: business.id, day, name, sentAt: new Date().toISOString(), status: "sent" })
@@ -202,6 +204,11 @@ export async function sendFile(job: Job) {
 export async function readReceipt(job: Job) {
   const said = await receipt(setting("ACCOUNTING_URL"), job.payload.name);
   if (!said) throw new Error("No receipt yet for " + job.payload.name);
+  log(said.accepted ? "info" : "error", said.accepted ? "accounting file booked" : "accounting file rejected", {
+    business: job.business,
+    day: job.payload.day,
+    receipt: said.text,
+  });
   await db()
     .update(exports)
     .set({ status: said.accepted ? "accepted" : "rejected", receipt: said.text })

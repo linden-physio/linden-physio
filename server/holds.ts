@@ -1,4 +1,5 @@
 import { auth, CONFIRM_PATH } from "./auth.ts";
+import { log } from "./log.ts";
 
 // A new booking is held until the person opens a link we email them. The link is the same kind as the
 // one to their bookings (Better Auth's magic link): it signs them in as that address, and then
@@ -14,7 +15,7 @@ export async function emailConfirmLink(email: string, headers: Headers): Promise
     });
     return true;
   } catch (error) {
-    console.error(error);
+    log("error", "confirmation link not sent", {}, error);
     return false;
   }
 }

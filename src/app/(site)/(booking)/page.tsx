@@ -11,6 +11,7 @@ import { Times } from "../../../Times";
 import { about, here } from "../../../business";
 import { wordsFor } from "../../../words";
 import type { FreeTimes } from "../../../../server/schemas.ts";
+import { log } from "../../../../server/log.ts";
 
 // The page's title is the business's name, so it waits for the address too.
 export async function generateMetadata(): Promise<Metadata> {
@@ -57,7 +58,7 @@ async function cachedFreeTimes(business: string, day: string, service: string) {
 // The free times for what the address asks for, or null if they couldn't be had.
 function freeTimesFor(business: string, { day, service }: Choice) {
   return cachedFreeTimes(business, day, service).catch((error) => {
-    console.error(error);
+    log("error", "free times not read", { business, day, service }, error);
     return null;
   });
 }

@@ -1,5 +1,6 @@
 import type { Cancelled, makeClinic } from "./clinic.ts";
 import { provider } from "./payments.ts";
+import { log } from "./log.ts";
 
 // Karin's rule: cancel at least a day before, and the deposit comes back. Later than that, the clinic
 // keeps it: the time can't be given to someone else so late. When the clinic cancels, it always pays
@@ -41,8 +42,14 @@ export async function cancelBooking(
         { idempotencyKey: "refund-" + deposit.paymentIntent },
       );
       await clinic.refunded(deposit.id, refund.id, refund.amount);
+      log("info", "deposit paid back", { booking: id, paymentIntent: deposit.paymentIntent, refund: refund.id });
     } catch (error) {
-      console.error(error);
+      log(
+        "error",
+        "deposit not paid back: do it by hand",
+        { booking: id, paymentIntent: deposit.paymentIntent },
+        error,
+      );
       failed = true;
     }
   }
