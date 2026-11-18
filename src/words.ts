@@ -1,7 +1,7 @@
 import "server-only";
 import { draftMode, headers } from "next/headers";
 import { cacheLife, cacheTag } from "next/cache";
-import { getPayload } from "payload";
+import { getPayload, type Where } from "payload";
 import config from "@payload-config";
 
 // The words on a business's booking page, from the CMS (Payload, src/payload.config.ts): the line under
@@ -11,8 +11,12 @@ export type Words = { welcome: string | null; services: Record<string, string> }
 
 async function fromCms(business: string, draft: boolean): Promise<Words> {
   const payload = await getPayload({ config });
-  const where = { business: { equals: business } };
-  // draft: the newest version, saved or published. Otherwise only what has been published.
+  // draft: the newest version, saved or published. Otherwise only what has been published: a text that
+  // was only ever saved as a draft has its row too, with _status "draft", and Payload's local API doesn't
+  // leave it out by itself.
+  const where: Where = draft
+    ? { business: { equals: business } }
+    : { business: { equals: business }, _status: { equals: "published" } };
   const [welcome, services] = await Promise.all([
     payload.find({ collection: "welcome", where, limit: 1, draft }),
     payload.find({ collection: "service-texts", where, limit: 100, draft }),
