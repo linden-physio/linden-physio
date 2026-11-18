@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { signedByKassa } from "./webhook.ts";
+import { kassa } from "../kassa/sdk.ts";
 
 const secret = "whsec_test";
 const sign = (body: string, time: number, key = secret) =>
@@ -11,6 +11,20 @@ const sign = (body: string, time: number, key = secret) =>
   createHmac("sha256", key)
     .update(time + "." + body)
     .digest("hex");
+
+// What our hand-made check did, now done by Kassa's library.
+function signedByKassa(body: string, header: string | null, key: string, now: number): boolean {
+  const realNow = Date.now;
+  Date.now = () => now;
+  try {
+    kassa("sk_test", "http://kassa.invalid").webhooks.constructEvent(body, header, key);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    Date.now = realNow;
+  }
+}
 
 test("only an event signed by Kassa, in the last five minutes, is believed", () => {
   const body = '{"type":"payment_intent.succeeded","data":{"object":{"amount_received":20000}}}';
