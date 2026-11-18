@@ -16,7 +16,8 @@
     "kassa": "node --env-file-if-exists=.env.local kassa/server.ts",
     "kassa:cli": "node --env-file-if-exists=.env.local kassa/cli.ts",
     "payload": "node --env-file-if-exists=.env.local node_modules/payload/bin.js",
-    "ekonomihuset": "node --env-file-if-exists=.env.local ekonomihuset/server.ts"
+    "ekonomihuset": "node --env-file-if-exists=.env.local ekonomihuset/server.ts",
+    "evals": "node --env-file-if-exists=.env.local evals/reschedule.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
