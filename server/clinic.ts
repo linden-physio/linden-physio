@@ -455,6 +455,37 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
       .onConflictDoNothing();
   }
 
+  // The confirmed bookings on a day, for their reminders.
+  async function confirmedOn(date: string): Promise<(OneBooking & { id: string })[]> {
+    const rows = await db
+      .select({
+        id: bookings.publicId,
+        startsAt: bookings.startsAt,
+        service: services.title,
+        with: staff.name,
+        email: bookings.email,
+        depositSek: services.depositSek,
+      })
+      .from(bookings)
+      .innerJoin(services, eq(bookings.service, services.id))
+      .innerJoin(staff, eq(bookings.staffId, staff.id))
+      .where(
+        and(
+          ofBusiness.bookings,
+          isNotNull(bookings.confirmedAt),
+          gte(bookings.startsAt, toInstant(date, "00:00")),
+          lt(bookings.startsAt, toInstant(addDays(date, 1), "00:00")),
+        ),
+      )
+      .orderBy(bookings.startsAt);
+    return rows.map((row) => ({
+      ...row,
+      startsAt: new Date(row.startsAt).toISOString(),
+      with: firstName(row.with),
+      confirmed: true,
+    }));
+  }
+
   // A day at the clinic, with every booking and who it's for. Only for the staff.
   async function day(date: string): Promise<Day> {
     const hours = await hoursByWeekday();
@@ -534,6 +565,7 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     paid,
     depositsOf,
     refunded,
+    confirmedOn,
   };
 }
 
@@ -568,6 +600,7 @@ export function makeClinic(db: NodePgDatabase, business: string, now: () => Date
     paid: inBusiness((c) => c.paid),
     depositsOf: inBusiness((c) => c.depositsOf),
     refunded: inBusiness((c) => c.refunded),
+    confirmedOn: inBusiness((c) => c.confirmedOn),
   };
 }
 
