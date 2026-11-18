@@ -12,7 +12,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql
-      # Runs once, when the volume is new: makes the tests' database too.
+      # Runs once, when the volume is new: makes the tests' database too, and the stand-ins'.
       - ./docker/create-test-database.sql:/docker-entrypoint-initdb.d/create-test-database.sql
 
   # Catches the mail the app sends on this computer, so nothing reaches a real inbox.

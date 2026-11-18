@@ -18,3 +18,14 @@ the database up to date.
     npm test
 
 The server's addresses (/api/free-times, /api/bookings) are written down in server/openapi.yaml.
+
+## The other companies' systems, on this computer
+
+The clinic works with systems it doesn't own. For this computer and the films, each has a stand-in in
+this repository that behaves like the real one, with its own database:
+
+- **Kassa** (kassa/), a card payment provider shaped like Stripe: `npm run kassa` (http://localhost:4242).
+  Its card form, its bank's 3-D Secure page, its signed webhooks and their retries, refunds and
+  Idempotency-Keys work as Stripe's do. It moves no money and takes only Stripe's test card numbers,
+  like 4242 4242 4242 4242, or 4000 0027 6000 3184 for 3-D Secure. `npm run kassa:cli -- events` lists
+  what happened.

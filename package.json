@@ -12,7 +12,9 @@
     "lint": "eslint .",
     "migrate": "node --env-file-if-exists=.env.local server/migrate.ts",
     "seed": "node --env-file-if-exists=.env.local server/seed.ts",
-    "generate": "drizzle-kit generate"
+    "generate": "drizzle-kit generate",
+    "kassa": "node --env-file-if-exists=.env.local kassa/server.ts",
+    "kassa:cli": "node --env-file-if-exists=.env.local kassa/cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

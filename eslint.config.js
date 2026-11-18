@@ -24,8 +24,8 @@ export default defineConfig([
     },
   },
   {
-    // The clinic's server runs in Node.
-    files: ["server/**/*.ts"],
+    // The clinic's server, and the stand-ins for other companies' systems, run in Node.
+    files: ["server/**/*.ts", "kassa/**/*.ts"],
     languageOptions: { globals: globals.node },
   },
   {
