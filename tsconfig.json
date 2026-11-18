@@ -30,6 +30,7 @@
     "src",
     "server",
     "kassa",
+    "ekonomihuset",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "dist/types/**/*.ts",
