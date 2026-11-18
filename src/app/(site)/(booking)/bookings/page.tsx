@@ -9,6 +9,7 @@ import { clockTime } from "../../../../clockTime";
 import { LinkForm } from "../../../../mine/LinkForm";
 import { forgetMe } from "../../../../mine/actions";
 import { CancelButton } from "../../../../mine/CancelButton";
+import { MoveByMessage } from "../../../../mine/MoveByMessage";
 
 import { about, here } from "../../../../business";
 
@@ -108,6 +109,8 @@ async function Bookings({ searchParams }: Pick<PageProps<"/bookings">, "searchPa
               );
             })}
           </ul>
+          {/* Only where the app has a key for Anthropic's API. */}
+          {process.env.ANTHROPIC_API_KEY && <MoveByMessage />}
         </>
       )}
       <form action={forgetMe}>

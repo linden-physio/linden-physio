@@ -104,6 +104,9 @@ export type Deposit = { id: number; paymentIntent: string; amountOre: number };
 // One of someone's own bookings, on their page.
 export type OwnBooking = { id: string; startsAt: string; service: string; with: string };
 
+export type Moved =
+  { kind: "moved"; startsAt: string; with: string } | { kind: "missing" | "started" | "passed" | "taken" };
+
 // One booking on the staff's day page.
 // held: made, but the person hasn't opened the link in the email yet.
 export type Visit = {
@@ -558,6 +561,50 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     return rows.map((row) => ({ ...row, startsAt: new Date(row.startsAt).toISOString(), with: firstName(row.with) }));
   }
 
+  // Move one of a person's own bookings to another free time, with the same physiotherapist if they're
+  // free then, or else anyone free who does the service. The deposit stays with the booking.
+  async function move(id: string, email: string, start: string): Promise<Moved> {
+    const [booking] = await db
+      .select({ id: bookings.id, service: bookings.service, staffId: bookings.staffId, startsAt: bookings.startsAt })
+      .from(bookings)
+      .where(
+        and(
+          ofBusiness.bookings,
+          eq(bookings.publicId, id),
+          sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`,
+          isNotNull(bookings.confirmedAt),
+        ),
+      );
+    if (!booking) return { kind: "missing" };
+    if (Date.parse(booking.startsAt) <= now().getTime()) return { kind: "started" };
+    if (Date.parse(start) <= now().getTime()) return { kind: "passed" };
+    const length = (await minutesFor(booking.service))!;
+    const { date, time } = fromInstant(start);
+    const { hours, people } = await diary(date);
+    const free = people
+      .filter((person) => freeTimes(date, length, hours, person.bookings).includes(time))
+      .sort((a, b) => Number(b.id === booking.staffId) - Number(a.id === booking.staffId));
+    for (const person of free) {
+      try {
+        await db.transaction((savepoint) =>
+          savepoint
+            .update(bookings)
+            .set({
+              startsAt: toInstant(date, time),
+              endsAt: toInstant(date, addMinutes(time, length)),
+              staffId: person.id,
+            })
+            .where(eq(bookings.id, booking.id)),
+        );
+        return { kind: "moved", startsAt: toInstant(date, time), with: firstName(person.name) };
+      } catch (error) {
+        const code = postgresError(error)?.code;
+        if (code !== "23P01" && code !== "40P01") throw error;
+      }
+    }
+    return { kind: "taken" };
+  }
+
   // Which physiotherapist a booking is with, or null if there's no such booking.
   async function bookedWith(id: string): Promise<number | null> {
     const [row] = await db
@@ -621,6 +668,7 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     refunded,
     confirmedOn,
     accountingFile,
+    move,
     browserError,
     recentBrowserErrors,
   };
@@ -660,6 +708,7 @@ export function makeClinic(db: NodePgDatabase, business: string, now: () => Date
     refunded: inBusiness((c) => c.refunded),
     confirmedOn: inBusiness((c) => c.confirmedOn),
     accountingFile: inBusiness((c) => c.accountingFile),
+    move: inBusiness((c) => c.move),
     browserError: inBusiness((c) => c.browserError),
     recentBrowserErrors: inBusiness((c) => c.recentBrowserErrors),
   };

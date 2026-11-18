@@ -9,6 +9,7 @@ import { auth } from "../../server/auth.ts";
 import { clinicHere } from "../business";
 import { cancelBooking } from "../../server/refunds.ts";
 import { log } from "../../server/log.ts";
+import { reschedule, type Proposal } from "../../server/reschedule.ts";
 
 export type LinkState = { kind: "idle" } | { kind: "sent"; email: string } | { kind: "invalid"; message: string };
 
@@ -60,4 +61,43 @@ export async function cancelOwn(previous: CancelState, data: FormData): Promise<
   updateTag("free-times");
   refresh();
   return { kind: "idle" };
+}
+
+export type MoveState =
+  | { kind: "idle" }
+  | { kind: "answered"; reply: string; proposal: Proposal | null }
+  | { kind: "moved"; message: string }
+  | { kind: "failed"; message: string };
+
+// Ask, in your own words, to move a booking: the model proposes, it doesn't move (server/reschedule.ts).
+export async function askToMove(previous: MoveState, data: FormData): Promise<MoveState> {
+  const session = await auth().api.getSession({ headers: await headers() });
+  if (!session) redirect("/bookings");
+  const message = z.string().trim().min(1).max(500).safeParse(data.get("message"));
+  if (!message.success) return { kind: "failed", message: "Write what you'd like, in up to 500 characters." };
+  try {
+    const { reply, proposal } = await reschedule(await clinicHere(), session.user.email, message.data);
+    return { kind: "answered", reply, proposal };
+  } catch (error) {
+    log("error", "reschedule failed", {}, error);
+    return { kind: "failed", message: "We couldn't read your message just now. Cancel and book again, or email us." };
+  }
+}
+
+// Make the move the person agreed to. It checks everything again: the form can say anything.
+export async function moveOwn(previous: MoveState, data: FormData): Promise<MoveState> {
+  const session = await auth().api.getSession({ headers: await headers() });
+  if (!session) redirect("/bookings");
+  const id = z.uuid().safeParse(data.get("id"));
+  const to = z.iso.datetime().safeParse(data.get("to"));
+  if (!id.success || !to.success) return { kind: "failed", message: "We couldn't find that booking." };
+  const moved = await (await clinicHere()).move(id.data, session.user.email, to.data);
+  log("info", "booking moved", { booking: id.data, outcome: moved.kind });
+  if (moved.kind === "missing") return { kind: "failed", message: "We couldn't find that booking." };
+  if (moved.kind === "started" || moved.kind === "passed")
+    return { kind: "failed", message: "That time has passed. Please email us." };
+  if (moved.kind === "taken") return { kind: "failed", message: "Someone just took that time. Ask again." };
+  updateTag("free-times");
+  refresh();
+  return { kind: "moved", message: "Moved. You'll see it in the list above." };
 }
