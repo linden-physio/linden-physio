@@ -29,7 +29,42 @@ export async function movementsOn(db: NodePgDatabase, business: string, day: str
   return rows.map((row) => ({ kind: row.kind, amountOre: row.amount_ore, text: row.text, at: row.at }));
 }
 
-const quoted = (text: string) => '"' + text.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+const quoted = (text: string) => '"' + plain(text).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+
+// Text from people (a name, a service's title) in the characters the file can hold. People write
+// whatever their keyboard has: "Michał", "Bjørn", "Follow-up – long". Code page 437 has å, ä and ö but
+// no ł, ø or –. Write them as the nearest letter it has, as a bank does on a statement; the rest of the
+// file stays strict (encode, below).
+const NEAREST: Record<string, string> = {
+  ł: "l",
+  Ł: "L",
+  ø: "o",
+  Ø: "O",
+  đ: "d",
+  Đ: "D",
+  œ: "oe",
+  Œ: "OE",
+  "–": "-",
+  "—": "-",
+  "‘": "'",
+  "’": "'",
+  "“": '"',
+  "”": '"',
+  "…": "...",
+};
+export function plain(text: string): string {
+  let out = "";
+  for (const char of text) {
+    if (char.codePointAt(0)! < 128 || BYTE.has(char)) out += char;
+    else if (NEAREST[char]) out += NEAREST[char];
+    else {
+      // "ś" is "s" and an accent: keep the letter, if the accent can't be written with it.
+      const letters = [...char.normalize("NFD")].filter((c) => c.codePointAt(0)! < 128 || BYTE.has(c)).join("");
+      out += letters || "?";
+    }
+  }
+  return out;
+}
 const kronor = (ore: number) => (ore / 100).toFixed(2);
 
 // The file's text: a header, the two accounts, then one verification for each movement.
@@ -66,7 +101,8 @@ const BYTE = new Map([...CP437_HIGH].map((char, i) => [char, 128 + i]));
 
 // The file as bytes, in code page 437. Buffer.from(text) would write UTF-8, where "ö" is two bytes that
 // the accounting system reads as "├╢". A character code page 437 hasn't got (an en dash, an emoji)
-// stops the file here, with its row, rather than reaching the accountant as something else.
+// stops the file here, with its row, rather than reaching the accountant as something else. Not the
+// row's text: it may hold a person's name, and the error goes to the log.
 export function encode(text: string): Buffer {
   const bytes: number[] = [];
   let row = 1;
@@ -74,9 +110,8 @@ export function encode(text: string): Buffer {
     const code = char.codePointAt(0)!;
     const byte = code < 128 ? code : BYTE.get(char);
     if (byte === undefined) {
-      const line = text.split("\r\n")[row - 1];
       throw new Error(
-        `Row ${row} has a character code page 437 hasn't got: "${char}" (U+${code.toString(16).toUpperCase().padStart(4, "0")}), in ${line}`,
+        `Row ${row} has a character code page 437 hasn't got: "${char}" (U+${code.toString(16).toUpperCase().padStart(4, "0")})`,
       );
     }
     if (char === "\n") row++;
@@ -177,6 +212,13 @@ export async function queueFiles(now = new Date(), again?: string) {
 // The job: make the day's file and send it.
 export async function sendFile(job: Job) {
   const day = job.payload.day;
+  // Booked already, by this job's twin sent by hand: the accounting system would refuse it, and this
+  // job would fail until it gave up, with an alert about a day that's fine.
+  const [booked] = await db()
+    .select()
+    .from(exports)
+    .where(and(eq(exports.businessId, job.business), eq(exports.day, day), eq(exports.status, "accepted")));
+  if (booked) return log("info", "accounting file booked already", { business: job.business, day });
   const [business] = await db().select().from(businesses).where(eq(businesses.id, job.business));
   const name = business.id + "-" + day.replaceAll("-", "") + ".se";
   const bytes = encode(sie(business.name, day, await movementsOn(db(), business.id, day), new Date()));
