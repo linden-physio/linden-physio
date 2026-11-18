@@ -1,8 +1,8 @@
 import pg from "pg";
-import { and, eq, gt, gte, lt, sql } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { and, eq, gt, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
+import type { NodePgDatabase, NodePgTransaction } from "drizzle-orm/node-postgres";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { bookings, openingHours, services, staff } from "./schema.ts";
+import { bookings, businesses, holdsMade, openingHours, services, staff } from "./schema.ts";
 import type { FreeTimes, NewBooking } from "./schemas.ts";
 import { toInstant, fromInstant } from "./clock.ts";
 import { freeTimes, nearestFreeTime, type Booking, type OpeningHours } from "./slots.ts";
@@ -41,22 +41,92 @@ function earliest(answers: ({ date: string; time: string } | null)[]) {
 }
 
 // with is the first name of the physiotherapist the booking is with.
+// How long a new booking is held for the person to open the link we email them: as long as the link
+// works.
+export const HOLD_MINUTES = 15;
+// How many holds one email address may have waiting at a time, and how many one internet address may
+// make in an hour. A family can book for each other from one home; a bot that fills the book can't.
+export const HOLDS_PER_EMAIL = 2;
+export const HOLDS_PER_ADDRESS_PER_HOUR = 10;
+
+// A new booking is held, not booked: it counts once the person opens the link in the email.
 export type Booked =
-  | { kind: "booked"; id: string; startsAt: string; with: string }
+  | { kind: "held"; id: string; startsAt: string; with: string; heldUntil: string }
   | { kind: "taken" }
+  | { kind: "too-many"; per: "email" | "address" }
   | { kind: "passed" }
   | { kind: "no-service" };
 export type Cancelled = "cancelled" | "started" | "missing";
 
-// What the clinic can do, with the given database. now() is the time; the tests give it a fixed one.
-// The pages and the server actions call these functions directly; the routes in routes.ts answer
-// HTTP requests with them.
-export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date()) {
-  // The clinic's opening hours, by weekday (0 is Sunday). A day with no row is closed.
+// One of the things a business offers.
+export type Service = { id: string; title: string; minutes: number; priceSek: number; line: string };
+
+// One of someone's own bookings, on their page.
+export type OwnBooking = { id: string; startsAt: string; service: string; with: string };
+
+// One booking on the staff's day page.
+// held: made, but the person hasn't opened the link in the email yet.
+export type Visit = {
+  id: string;
+  start: string;
+  end: string;
+  name: string;
+  service: string;
+  priceSek: number;
+  held: boolean;
+};
+// A day at the clinic, for the staff: each physiotherapist's bookings, and the opening hours.
+export type Day = { hours: OpeningHours; people: { id: number; name: string; visits: Visit[] }[] };
+
+// What a business can do, inside a transaction (below) that Postgres already limits to its rows.
+// Every query here asks only for the business's rows too.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => Date) {
+  const ofBusiness = {
+    bookings: eq(bookings.businessId, business),
+    staff: eq(staff.businessId, business),
+    services: eq(services.businessId, business),
+    openingHours: eq(openingHours.businessId, business),
+  };
+  // The bookings that count: the confirmed ones, and the holds whose time isn't up. A hold nobody
+  // confirmed is as good as gone.
+  const live = () => or(isNotNull(bookings.confirmedAt), gt(bookings.heldUntil, now().toISOString()));
+
+  // The business's name and address, as its pages show them, and how its staff sign in.
+  async function about(): Promise<{ id: string; name: string; email: string; staffSignIn: string }> {
+    const [row] = await db
+      .select({
+        id: businesses.id,
+        name: businesses.name,
+        email: businesses.email,
+        staffSignIn: businesses.staffSignIn,
+      })
+      .from(businesses)
+      .where(eq(businesses.id, business));
+    if (!row) throw new Error("No such business: " + business);
+    return row;
+  }
+
+  // What the business offers, in the order its page lists them.
+  async function offers(): Promise<Service[]> {
+    return db
+      .select({
+        id: services.id,
+        title: services.title,
+        minutes: services.minutes,
+        priceSek: services.priceSek,
+        line: services.line,
+      })
+      .from(services)
+      .where(ofBusiness.services)
+      .orderBy(services.position);
+  }
+
+  // The opening hours, by weekday (0 is Sunday). A day with no row is closed.
   async function hoursByWeekday(): Promise<Record<number, OpeningHours>> {
     const hours: Record<number, OpeningHours> = {};
     for (let weekday = 0; weekday < 7; weekday++) hours[weekday] = "closed";
-    for (const row of await db.select().from(openingHours)) {
+    for (const row of await db.select().from(openingHours).where(ofBusiness.openingHours)) {
       hours[row.weekday] = { open: row.opens.slice(0, 5), close: row.closes.slice(0, 5) };
     }
     return hours;
@@ -64,18 +134,20 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
 
   // How long a service takes, or null if there's no such service.
   async function minutesFor(service: string): Promise<number | null> {
-    const [row] = await db.select().from(services).where(eq(services.id, service));
+    const [row] = await db
+      .select()
+      .from(services)
+      .where(and(eq(services.id, service), ofBusiness.services));
     return row ? row.minutes : null;
   }
 
   // Everything needed to work out a day's free times: the hours, the staff, and each one's bookings.
   async function diary(date: string) {
+    // One after another: a transaction is one connection, which runs one query at a time.
+    const hours = await hoursByWeekday();
     // By id, so a time's names always come in the same order, and booking tries people in that order.
-    const [hours, people, booked] = await Promise.all([
-      hoursByWeekday(),
-      db.select().from(staff).orderBy(staff.id),
-      bookingsFrom(date),
-    ]);
+    const people = await db.select().from(staff).where(ofBusiness.staff).orderBy(staff.id);
+    const booked = await bookingsFrom(date);
     return {
       hours,
       people: people.map((person) => ({ ...person, bookings: booked.filter((b) => b.staffId === person.id) })),
@@ -94,6 +166,8 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
       .from(bookings)
       .where(
         and(
+          ofBusiness.bookings,
+          live(),
           gte(bookings.startsAt, toInstant(date, "00:00")),
           lt(bookings.startsAt, toInstant(addDays(date, 15), "00:00")),
         ),
@@ -125,13 +199,54 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
     };
   }
 
-  async function book(booking: NewBooking): Promise<Booked> {
+  // How many holds there are that nobody has confirmed yet, for an email address.
+  async function waitingFor(email: string): Promise<number> {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(bookings)
+      .where(
+        and(
+          ofBusiness.bookings,
+          sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`,
+          isNull(bookings.confirmedAt),
+          gt(bookings.heldUntil, now().toISOString()),
+        ),
+      );
+    return count;
+  }
+
+  // How many holds an internet address has made in the last hour.
+  async function heldFrom(from: string): Promise<number> {
+    const hourAgo = new Date(now().getTime() - 60 * 60_000).toISOString();
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(holdsMade)
+      .where(and(eq(holdsMade.businessId, business), eq(holdsMade.madeFrom, from), gt(holdsMade.madeAt, hourAgo)));
+    return count;
+  }
+
+  // from is the internet address the request came from.
+  async function book(booking: NewBooking, from: string): Promise<Booked> {
     // Checked here, not only in the form's action, because /api/bookings takes bookings too, and
     // anyone can post to it with any time.
     if (Date.parse(booking.start) <= now().getTime()) return { kind: "passed" };
     const { date, time } = fromInstant(booking.start);
     const length = await minutesFor(booking.service);
     if (length === null) return { kind: "no-service" };
+    // Count, then hold: another request from the same address or email can count between the two, and
+    // a bot that sends thirty at once gets them all counted before any is held. So the requests from one
+    // internet address, and for one email, wait for each other here, until this transaction ends.
+    await db.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"holds from " + business + " " + from}))`);
+    await db.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${"holds for " + business + " " + booking.email.trim().toLowerCase()}))`,
+    );
+    if ((await waitingFor(booking.email)) >= HOLDS_PER_EMAIL) return { kind: "too-many", per: "email" };
+    if ((await heldFrom(from)) >= HOLDS_PER_ADDRESS_PER_HOUR) return { kind: "too-many", per: "address" };
+    // Holds whose time is up still sit in the table, and its rule against overlaps still sees them.
+    // Clear them out first, so their times can be taken.
+    await db
+      .delete(bookings)
+      .where(and(ofBusiness.bookings, isNull(bookings.confirmedAt), lte(bookings.heldUntil, now().toISOString())));
     // Try the physiotherapists who are free at that time, one after another. Another request can
     // take the same physiotherapist between our check and our insert, and then the next one may
     // still be free.
@@ -139,19 +254,33 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
     const free = people.filter((person) => freeTimes(date, length, hours, person.bookings).includes(time));
     for (const person of free) {
       try {
-        const [made] = await db
-          .insert(bookings)
-          .values({
-            startsAt: toInstant(date, time),
-            endsAt: toInstant(date, addMinutes(time, length)),
-            service: booking.service,
-            staffId: person.id,
-            name: booking.name,
-            email: booking.email,
-          })
-          .returning({ id: bookings.publicId });
+        // Each try in a savepoint (a transaction inside this one): a refused insert undoes only itself,
+        // and the next physiotherapist can still be tried.
+        const [made] = await db.transaction((savepoint) =>
+          savepoint
+            .insert(bookings)
+            .values({
+              businessId: business,
+              startsAt: toInstant(date, time),
+              endsAt: toInstant(date, addMinutes(time, length)),
+              service: booking.service,
+              staffId: person.id,
+              name: booking.name,
+              email: booking.email,
+              heldUntil: new Date(now().getTime() + HOLD_MINUTES * 60_000).toISOString(),
+            })
+            .returning({ id: bookings.publicId, heldUntil: bookings.heldUntil }),
+        );
+        // Counted against the address, even after the hold is confirmed, or runs out and is deleted.
+        await db.insert(holdsMade).values({ businessId: business, madeFrom: from, madeAt: now().toISOString() });
         // The id is what the person who booked cancels with.
-        return { kind: "booked", id: made.id, startsAt: toInstant(date, time), with: firstName(person.name) };
+        return {
+          kind: "held",
+          id: made.id,
+          startsAt: toInstant(date, time),
+          with: firstName(person.name),
+          heldUntil: new Date(made.heldUntil!).toISOString(),
+        };
       } catch (error) {
         // The table's rule refused it: 23P01 (exclusion constraint), or now and then 40P01, when two
         // inserts were waiting for each other and Postgres stopped one of them.
@@ -162,20 +291,139 @@ export function makeClinic(db: NodePgDatabase, now: () => Date = () => new Date(
     return { kind: "taken" };
   }
 
-  async function cancel(id: string): Promise<Cancelled> {
+  // Confirm the holds made with an email address, now that someone has opened the link we sent it. Holds
+  // whose time is up stay unconfirmed: their times may be someone else's now. Returns how many.
+  async function confirm(email: string): Promise<number> {
+    const confirmed = await db
+      .update(bookings)
+      .set({ confirmedAt: now().toISOString(), heldUntil: null })
+      .where(
+        and(
+          ofBusiness.bookings,
+          sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`,
+          isNull(bookings.confirmedAt),
+          gt(bookings.heldUntil, now().toISOString()),
+        ),
+      )
+      .returning({ id: bookings.id });
+    return confirmed.length;
+  }
+
+  // Cancel a booking by its id. With an email address, only a booking made with that address: someone
+  // signed in from their link can cancel their own bookings and no one else's.
+  async function cancel(id: string, email?: string): Promise<Cancelled> {
+    const ours = and(
+      ofBusiness.bookings,
+      eq(bookings.publicId, id),
+      email === undefined ? undefined : sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`,
+    );
     // Delete it only if it hasn't started, in one statement, so that nothing can change in between.
     const deleted = await db
       .delete(bookings)
-      .where(and(eq(bookings.publicId, id), gt(bookings.startsAt, now().toISOString())))
+      .where(and(ours, gt(bookings.startsAt, now().toISOString())))
       .returning({ id: bookings.id });
     if (deleted.length > 0) return "cancelled";
-    // Nothing deleted: either there's no such booking, or it has already started.
-    const [left] = await db.select({ id: bookings.id }).from(bookings).where(eq(bookings.publicId, id));
+    // Nothing deleted: either there's no such booking (of theirs), or it has already started.
+    const [left] = await db.select({ id: bookings.id }).from(bookings).where(ours);
     return left ? "started" : "missing";
   }
 
-  return { freeTimesOn, book, cancel };
+  // A day at the clinic, with every booking and who it's for. Only for the staff.
+  async function day(date: string): Promise<Day> {
+    const hours = await hoursByWeekday();
+    const people = await db.select().from(staff).where(ofBusiness.staff).orderBy(staff.id);
+    const visits = await db
+      .select({
+        staffId: bookings.staffId,
+        id: bookings.publicId,
+        start: wall(bookings.startsAt, "HH24:MI"),
+        end: wall(bookings.endsAt, "HH24:MI"),
+        name: bookings.name,
+        service: services.title,
+        priceSek: services.priceSek,
+        held: sql<boolean>`${bookings.confirmedAt} IS NULL`,
+      })
+      .from(bookings)
+      .innerJoin(services, eq(bookings.service, services.id))
+      .where(
+        and(
+          ofBusiness.bookings,
+          live(),
+          gte(bookings.startsAt, toInstant(date, "00:00")),
+          lt(bookings.startsAt, toInstant(addDays(date, 1), "00:00")),
+        ),
+      )
+      .orderBy(bookings.startsAt);
+    return {
+      hours: hours[new Date(date + "T12:00").getDay()],
+      people: people.map((person) => ({
+        id: person.id,
+        name: person.name,
+        visits: visits.filter((visit) => visit.staffId === person.id),
+      })),
+    };
+  }
+
+  // The bookings made with an email address that haven't started yet, soonest first.
+  async function bookingsFor(email: string): Promise<OwnBooking[]> {
+    const rows = await db
+      .select({ id: bookings.publicId, startsAt: bookings.startsAt, service: services.title, with: staff.name })
+      .from(bookings)
+      .innerJoin(services, eq(bookings.service, services.id))
+      .innerJoin(staff, eq(bookings.staffId, staff.id))
+      .where(
+        and(
+          ofBusiness.bookings,
+          sql`lower(${bookings.email}) = ${email.trim().toLowerCase()}`,
+          live(),
+          gt(bookings.startsAt, now().toISOString()),
+        ),
+      )
+      .orderBy(bookings.startsAt);
+    return rows.map((row) => ({ ...row, startsAt: new Date(row.startsAt).toISOString(), with: firstName(row.with) }));
+  }
+
+  // Which physiotherapist a booking is with, or null if there's no such booking.
+  async function bookedWith(id: string): Promise<number | null> {
+    const [row] = await db
+      .select({ staffId: bookings.staffId })
+      .from(bookings)
+      .where(and(ofBusiness.bookings, eq(bookings.publicId, id)));
+    return row?.staffId ?? null;
+  }
+
+  return { about, offers, freeTimesOn, book, confirm, cancel, day, bookingsFor, bookedWith };
 }
 
-// The clinic, with the database from the environment.
-export const clinic = () => makeClinic(db());
+type Clinic = ReturnType<typeof clinicIn>;
+
+// The one way into a business's data. It takes the business first. Each call runs in a transaction
+// that tells Postgres which business it is for (app.business) and takes the role clinic_app, whose
+// row-level security policies show and accept only that business's rows. So even a query that forgets
+// to ask for the business gets no other business's rows: the net under the code's own check.
+// now() is the time; the tests give it a fixed one. The pages and the server actions call these
+// functions directly; the routes in routes.ts answer HTTP requests with them.
+export function makeClinic(db: NodePgDatabase, business: string, now: () => Date = () => new Date()): Clinic {
+  const inBusiness =
+    <A extends unknown[], R>(work: (clinic: Clinic) => (...args: A) => Promise<R>) =>
+    (...args: A) =>
+      db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT set_config('app.business', ${business}, true)`);
+        await tx.execute(sql`SET LOCAL ROLE clinic_app`);
+        return work(clinicIn(tx, business, now))(...args);
+      });
+  return {
+    about: inBusiness((c) => c.about),
+    offers: inBusiness((c) => c.offers),
+    freeTimesOn: inBusiness((c) => c.freeTimesOn),
+    book: inBusiness((c) => c.book),
+    confirm: inBusiness((c) => c.confirm),
+    cancel: inBusiness((c) => c.cancel),
+    day: inBusiness((c) => c.day),
+    bookingsFor: inBusiness((c) => c.bookingsFor),
+    bookedWith: inBusiness((c) => c.bookedWith),
+  };
+}
+
+// A business, with the database from the environment.
+export const clinic = (business: string) => makeClinic(db(), business);

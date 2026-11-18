@@ -5,7 +5,7 @@ src/ holds the pages and components; server/ holds what works out the free times
 cancels them, and the database's tables and migrations.
 
 It needs Postgres, with two databases: one for the app and one for the tests. compose.yaml starts
-both in Docker. Their addresses go in a file `.env.local`, which git ignores: copy `.env.example` to
+both in Docker, with Mailpit, which catches the mail the app sends (http://localhost:8025). Their addresses go in a file `.env.local`, which git ignores: copy `.env.example` to
 `.env.local` and fill it in. The tables are described in server/schema.ts; `npm run migrate` brings
 the database up to date.
 

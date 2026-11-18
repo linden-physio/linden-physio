@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { makeApp } from "./routes.ts";
+import { noMail } from "./holds.ts";
 import { setting } from "./env.ts";
 import { seed } from "./seed.ts";
 
@@ -16,7 +17,7 @@ test("the server refuses a time that has already passed, whoever posts it", asyn
   t.after(() => db.$client.end());
 
   // Tuesday 10 November at ten past ten in the clinic.
-  const app = makeApp(db, () => new Date("2026-11-10T09:10:00.000Z"));
+  const app = makeApp(db, () => new Date("2026-11-10T09:10:00.000Z"), noMail);
   const book = (start: string) =>
     app.request("/bookings", {
       method: "POST",

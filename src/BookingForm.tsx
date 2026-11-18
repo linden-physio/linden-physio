@@ -14,9 +14,7 @@ import {
 import { dayName } from "./dayName";
 import { Field } from "./Field";
 import { Message, type FormState } from "./Message";
-import { cancelBooking } from "./api";
 import { book } from "./actions";
-import { afterCancel } from "./cancelling";
 import { clockTime } from "./clockTime";
 
 function today(): string {
@@ -32,7 +30,6 @@ export function BookingForm({
   service,
   serviceId,
   onSending,
-  onChanged,
 }: {
   date: string;
   picked: string | null;
@@ -40,13 +37,10 @@ export function BookingForm({
   serviceId: string;
   // Called when a booking is sent: the picked time is on its way, and gone from the free times after.
   onSending: () => void;
-  // Called when the free times have changed after a cancel. (A booking changes them too, and the
-  // action's answer brings the new ones with it.)
-  onChanged: () => void;
 }) {
   // The booking's state comes from the server action's answer; pending is true while it runs.
   const [booking, bookAction, pending] = useActionState(book, { kind: "editing" });
-  // What the browser has to say itself: a time not picked yet, and cancelling.
+  // What the browser has to say itself: a time not picked yet.
   const [formState, setFormState] = useState<FormState>({ kind: "editing" });
   const shown: FormState = pending ? { kind: "sending" } : formState.kind !== "editing" ? formState : booking;
   // The booking being checked in the dialog, or null when the dialog is closed.
@@ -86,18 +80,6 @@ export function BookingForm({
     startTransition(() => bookAction(details.data));
   }
 
-  async function cancel(booked: { id: string; date: string; time: string }) {
-    setFormState({ kind: "cancelling" });
-    try {
-      const response = await cancelBooking(booked.id);
-      setFormState(afterCancel(response.status, booked));
-      if (response.ok) onChanged();
-    } catch {
-      // No answer at all: the network or the server is down.
-      setFormState(afterCancel(0, booked));
-    }
-  }
-
   return (
     <form id="details" action={bookAction} onSubmit={check} className="flex flex-col gap-4">
       <input type="hidden" name="service" value={serviceId} />
@@ -133,11 +115,6 @@ export function BookingForm({
         </DialogContent>
       </Dialog>
       <Message formState={shown} />
-      {shown.kind === "booked" && (
-        <Button type="button" variant="outline" className="sm:self-start" onClick={() => cancel(shown)}>
-          Cancel this booking
-        </Button>
-      )}
     </form>
   );
 }

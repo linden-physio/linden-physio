@@ -57,6 +57,76 @@
       "when": 1794433564578,
       "tag": "0007_give_each_booking_a_public_id",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794551440486,
+      "tag": "0008_give_staff_an_address_and_a_password",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794551493237,
+      "tag": "0009_remember_who_is_signed_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794551872764,
+      "tag": "0010_let_better_auth_keep_who_is_signed_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794551969707,
+      "tag": "0011_delete_the_passwords_and_our_own_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794552314554,
+      "tag": "0012_give_each_member_of_staff_a_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794552530484,
+      "tag": "0013_give_every_row_a_business",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794552644512,
+      "tag": "0014_say_what_each_business_offers_and_how_its_staff_sign_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1794552910973,
+      "tag": "0015_let_postgres_keep_each_business_to_its_own_rows",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794553532135,
+      "tag": "0016_hold_each_booking_until_the_email_link_is_opened",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794553996660,
+      "tag": "0017_count_the_holds_from_each_address",
+      "breakpoints": true
     }
   ]
 }
