@@ -25,7 +25,10 @@ test("a paid deposit confirms the booking, and is kept even when the booking is 
   assert.equal(maja.kind, "held");
   if (maja.kind !== "held") return;
   assert.equal(maja.depositSek, 200);
-  assert.equal(await clinic.paid(maja.id, "pi_maja", 20000), "confirmed");
+  assert.equal(
+    await clinic.paid(maja.id, "pi_maja", 20000, { id: "evt_1", type: "payment_intent.succeeded" }),
+    "confirmed",
+  );
   assert.equal((await clinic.booking(maja.id))?.confirmed, true);
   const paidVisits = (await clinic.day("2026-11-10")).people.flatMap((person) => person.visits);
   assert.deepEqual(
@@ -38,7 +41,10 @@ test("a paid deposit confirms the booking, and is kept even when the booking is 
   const tove = await hold("Tove", "203.0.113.2");
   if (tove.kind !== "held") assert.fail();
   time = new Date("2026-11-09T18:20:00.000Z");
-  assert.equal(await clinic.paid(tove.id, "pi_tove", 20000), "confirmed");
+  assert.equal(
+    await clinic.paid(tove.id, "pi_tove", 20000, { id: "evt_2", type: "payment_intent.succeeded" }),
+    "confirmed",
+  );
 
   // Tove cancels (her deposit stays, pointing at no booking). Ida's hold runs out, and Sara takes the time before Ida's payment comes in.
   await clinic.cancel(tove.id);
@@ -46,7 +52,13 @@ test("a paid deposit confirms the booking, and is kept even when the booking is 
   if (ida.kind !== "held") assert.fail();
   time = new Date("2026-11-09T18:40:00.000Z");
   assert.equal((await hold("Sara", "203.0.113.4")).kind, "held");
-  assert.equal(await clinic.paid(ida.id, "pi_ida", 20000), "gone");
+  assert.equal(await clinic.paid(ida.id, "pi_ida", 20000, { id: "evt_3", type: "payment_intent.succeeded" }), "gone");
+
+  // Kassa sends Maja's event again: nothing changes.
+  assert.equal(
+    await clinic.paid(maja.id, "pi_maja", 20000, { id: "evt_1", type: "payment_intent.succeeded" }),
+    "heard already",
+  );
 
   const kept = await db.execute<{ payment_intent: string; booked: boolean }>(
     sql`SELECT payment_intent, booking_id IS NOT NULL AS booked FROM deposits ORDER BY id`,

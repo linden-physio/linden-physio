@@ -134,6 +134,13 @@
       "when": 1795011855065,
       "tag": "0018_take_a_deposit_when_booking",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795012497661,
+      "tag": "0019_hear_each_event_once",
+      "breakpoints": true
     }
   ]
 }

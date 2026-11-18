@@ -105,9 +105,19 @@ export const deposits = pgTable("deposits", {
   id: serial().primaryKey(),
   businessId: businessId(),
   bookingId: integer("booking_id").references(() => bookings.id, { onDelete: "set null" }),
-  // The payment's id at the provider, like pi_3Qx…
-  paymentIntent: text("payment_intent").notNull(),
+  // The payment's id at the provider, like pi_3Qx… One deposit for each payment, however many times
+  // we hear that it was paid.
+  paymentIntent: text("payment_intent").notNull().unique(),
   // In öre, as payment providers count: 200 kr is 20000.
   amountOre: integer("amount_ore").notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+// Each event from the payment provider we've acted on, by its id (evt_…). The provider sends an event
+// again when it isn't sure we got it, and the second one bounces off the row already here.
+export const providerEvents = pgTable("provider_events", {
+  id: text().primaryKey(),
+  businessId: businessId(),
+  type: text().notNull(),
   receivedAt: timestamp("received_at", { withTimezone: true, mode: "string" }).notNull(),
 });

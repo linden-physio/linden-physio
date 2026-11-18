@@ -2,7 +2,7 @@ import pg from "pg";
 import { and, eq, gt, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import type { NodePgDatabase, NodePgTransaction } from "drizzle-orm/node-postgres";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { bookings, businesses, deposits, holdsMade, openingHours, services, staff } from "./schema.ts";
+import { bookings, businesses, deposits, holdsMade, openingHours, providerEvents, services, staff } from "./schema.ts";
 import type { FreeTimes, NewBooking } from "./schemas.ts";
 import { toInstant, fromInstant } from "./clock.ts";
 import { freeTimes, nearestFreeTime, type Booking, type OpeningHours } from "./slots.ts";
@@ -80,8 +80,10 @@ export type OneBooking = {
 };
 
 // What became of a booking when its deposit came in: confirmed, or gone, because its time ran out and
-// someone else took it before the payment was made.
-export type Paid = "confirmed" | "gone";
+// someone else took it before the payment was made. Or nothing at all: we'd already heard.
+export type Paid = "confirmed" | "gone" | "heard already";
+// An event from the payment provider: its id and what it says happened.
+export type EventSeen = { id: string; type: string };
 
 // One of someone's own bookings, on their page.
 export type OwnBooking = { id: string; startsAt: string; service: string; with: string };
@@ -380,19 +382,35 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
   // 15 minutes are up is still confirmed if its row is there, because then nobody has taken its time:
   // the table's rule against overlaps would have refused them. If the row is gone, the money still
   // came in, so the deposit is kept with no booking.
-  async function paid(id: string, paymentIntent: string, amountOre: number): Promise<Paid> {
+  // event is the provider's id for the news (evt_…). The same news can come twice: the provider sends
+  // it again when we didn't answer in time, or answered with an error after doing the work. The event's
+  // row, in the same transaction as the work, makes the second one change nothing: either both are
+  // saved or neither is.
+  async function paid(id: string, paymentIntent: string, amountOre: number, event: EventSeen): Promise<Paid> {
+    const [first] = await db
+      .insert(providerEvents)
+      .values({ id: event.id, businessId: business, type: event.type, receivedAt: now().toISOString() })
+      .onConflictDoNothing()
+      .returning({ id: providerEvents.id });
+    if (!first) return "heard already";
     const [confirmed] = await db
       .update(bookings)
       .set({ confirmedAt: sql`coalesce(${bookings.confirmedAt}, ${now().toISOString()})`, heldUntil: null })
       .where(and(ofBusiness.bookings, eq(bookings.publicId, id)))
       .returning({ id: bookings.id });
-    await db.insert(deposits).values({
-      businessId: business,
-      bookingId: confirmed?.id ?? null,
-      paymentIntent,
-      amountOre,
-      receivedAt: now().toISOString(),
-    });
+    // Two different events can be about one payment, too: one deposit for each payment.
+    const [kept] = await db
+      .insert(deposits)
+      .values({
+        businessId: business,
+        bookingId: confirmed?.id ?? null,
+        paymentIntent,
+        amountOre,
+        receivedAt: now().toISOString(),
+      })
+      .onConflictDoNothing()
+      .returning({ id: deposits.id });
+    if (!kept) return "heard already";
     return confirmed ? "confirmed" : "gone";
   }
 
