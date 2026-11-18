@@ -10,7 +10,9 @@ export type Action =
   // Cancel a booking with a physiotherapist.
   | { do: "cancel"; staffId: number }
   // Change the words on the business's pages, in the CMS.
-  | { do: "edit the words" };
+  | { do: "edit the words" }
+  // Read the errors from people's browsers, with the pages they were on.
+  | { do: "see the errors" };
 
 export function may(who: Who, action: Action): boolean {
   if (who.role === "owner") return true;
@@ -18,6 +20,7 @@ export function may(who: Who, action: Action): boolean {
     case "see the takings":
       return false;
     case "edit the words":
+    case "see the errors":
       return false;
     case "cancel":
       // A physio may cancel their own patients' bookings.

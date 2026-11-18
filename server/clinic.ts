@@ -4,6 +4,7 @@ import type { NodePgDatabase, NodePgTransaction } from "drizzle-orm/node-postgre
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   bookings,
+  browserErrors,
   businesses,
   deposits,
   exports,
@@ -19,6 +20,7 @@ import { toInstant, fromInstant } from "./clock.ts";
 import { freeTimes, nearestFreeTime, type Booking, type OpeningHours } from "./slots.ts";
 import { db } from "./db.ts";
 import { enqueue } from "./jobs.ts";
+import type { Report } from "./browserErrors.ts";
 
 function addMinutes(time: string, minutes: number): string {
   const total = Number(time.slice(0, 2)) * 60 + Number(time.slice(3)) + minutes;
@@ -574,6 +576,35 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     return row ?? null;
   }
 
+  // An error from someone's browser, already read through the source maps.
+  async function browserError(report: Report & { source: string | null; fingerprint: string }) {
+    await db.insert(browserErrors).values({ businessId: business, ...report });
+  }
+
+  // The errors from browsers in the last week, the most frequent first: one row for each mistake.
+  async function recentBrowserErrors() {
+    const { rows } = await db.execute<{
+      fingerprint: string;
+      times: number;
+      last: string;
+      message: string;
+      source: string | null;
+      stack: string;
+      page: string;
+      release: string;
+      browsers: number;
+    }>(sql`
+      SELECT DISTINCT ON (fingerprint) fingerprint,
+        count(*) OVER (PARTITION BY fingerprint)::int AS times,
+        max(at) OVER (PARTITION BY fingerprint) AS last,
+        message, source, stack, page, release,
+        (SELECT count(DISTINCT e.browser) FROM browser_errors e WHERE e.business_id = browser_errors.business_id AND e.fingerprint = browser_errors.fingerprint)::int AS browsers
+      FROM browser_errors
+      WHERE business_id = ${business} AND at > now() - interval '7 days'
+      ORDER BY fingerprint, at DESC`);
+    return rows.sort((a, b) => b.times - a.times);
+  }
+
   return {
     about,
     offers,
@@ -590,6 +621,8 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     refunded,
     confirmedOn,
     accountingFile,
+    browserError,
+    recentBrowserErrors,
   };
 }
 
@@ -627,6 +660,8 @@ export function makeClinic(db: NodePgDatabase, business: string, now: () => Date
     refunded: inBusiness((c) => c.refunded),
     confirmedOn: inBusiness((c) => c.confirmedOn),
     accountingFile: inBusiness((c) => c.accountingFile),
+    browserError: inBusiness((c) => c.browserError),
+    recentBrowserErrors: inBusiness((c) => c.recentBrowserErrors),
   };
 }
 

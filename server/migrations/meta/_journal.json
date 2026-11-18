@@ -169,6 +169,13 @@
       "when": 1795013799294,
       "tag": "0023_keep_each_nights_file",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795014637787,
+      "tag": "0024_show_the_errors_from_browsers",
+      "breakpoints": true
     }
   ]
 }

@@ -10,3 +10,27 @@ import { PgInstrumentation } from "@opentelemetry/instrumentation-pg";
 export function register() {
   registerOTel({ serviceName: "linden-physio", instrumentations: ["auto", new PgInstrumentation()] });
 }
+
+// Next.js calls this for every error thrown while answering a request: a page, a server action, a
+// route. The line carries the error's digest, the id a visitor's error page was given in its place.
+export async function onRequestError(
+  error: unknown,
+  request: { path: string; method: string },
+  context: { routerKind: string; routePath: string; routeType: string },
+) {
+  // This file is built for the Edge runtime too, where the log can't write: Node.js only.
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  const { log } = await import("../server/log.ts");
+  log(
+    "error",
+    "request failed",
+    {
+      method: request.method,
+      path: request.path,
+      route: context.routePath,
+      routeType: context.routeType,
+      digest: (error as { digest?: string }).digest,
+    },
+    error,
+  );
+}

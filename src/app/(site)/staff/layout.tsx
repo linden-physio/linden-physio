@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { CalendarDays, PenLine } from "lucide-react";
+import { Bug, CalendarDays, PenLine } from "lucide-react";
 import { signedIn } from "../../../session";
 import { may } from "../../../../server/permissions.ts";
 import { SignedInAs } from "../../../staff/SignedInAs";
@@ -25,6 +25,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           </Link>
           <Suspense fallback={null}>
             <Words />
+            <Errors />
           </Suspense>
         </nav>
       </aside>
@@ -41,6 +42,17 @@ async function Words() {
     <a href="/cms" className="mt-1 flex items-center gap-2 rounded-md px-3 py-2 font-medium">
       <PenLine className="size-4" /> Words on the site
     </a>
+  );
+}
+
+// The errors from people's browsers, for those who may read them.
+async function Errors() {
+  const who = await signedIn();
+  if (!who || !may(who, { do: "see the errors" })) return null;
+  return (
+    <Link href="/staff/errors" className="mt-1 flex items-center gap-2 rounded-md px-3 py-2 font-medium">
+      <Bug className="size-4" /> Errors
+    </Link>
   );
 }
 

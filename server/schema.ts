@@ -186,3 +186,25 @@ export const exports = pgTable(
   },
   (table) => [unique().on(table.businessId, table.day)],
 );
+
+// Errors that happened in people's browsers, as the page reported them (src/ErrorReporter.tsx). The
+// same mistake reported a thousand times has one fingerprint: its message and where it happened.
+export const browserErrors = pgTable(
+  "browser_errors",
+  {
+    id: serial().primaryKey(),
+    businessId: businessId(),
+    at: timestamp({ withTimezone: true, mode: "string" }).notNull().defaultNow(),
+    // The commit the page was built from, so the stack is read against that build's source maps.
+    release: text().notNull(),
+    page: text().notNull(),
+    message: text().notNull(),
+    // The stack as the browser gave it, in the built, minified scripts; and read through the source
+    // maps, as lines of our own files.
+    stack: text().notNull(),
+    source: text(),
+    fingerprint: text().notNull(),
+    browser: text().notNull(),
+  },
+  (table) => [index("browser_errors_fingerprint_idx").on(table.businessId, table.fingerprint)],
+);
