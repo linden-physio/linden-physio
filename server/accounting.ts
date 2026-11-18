@@ -56,38 +56,66 @@ export function sie(name: string, day: string, movements: Movement[], made: Date
   return lines.join("\r\n") + "\r\n";
 }
 
-// The file as bytes.
+// The file says #FORMAT PC8: code page 437, the character set of the IBM PC from 1981, one byte for
+// each character. Bytes below 128 are ASCII; these are the characters for the bytes from 128 up.
+const CP437_HIGH =
+  "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\u00a0";
+const BYTE = new Map([...CP437_HIGH].map((char, i) => [char, 128 + i]));
+
+// The file as bytes, in code page 437. Buffer.from(text) would write UTF-8, where "ö" is two bytes that
+// the accounting system reads as "├╢". A character code page 437 hasn't got (an en dash, an emoji)
+// stops the file here, with its row, rather than reaching the accountant as something else.
 export function encode(text: string): Buffer {
-  return Buffer.from(text);
+  const bytes: number[] = [];
+  let row = 1;
+  for (const char of text) {
+    const code = char.codePointAt(0)!;
+    const byte = code < 128 ? code : BYTE.get(char);
+    if (byte === undefined) {
+      const line = text.split("\r\n")[row - 1];
+      throw new Error(
+        `Row ${row} has a character code page 437 hasn't got: "${char}" (U+${code.toString(16).toUpperCase().padStart(4, "0")}), in ${line}`,
+      );
+    }
+    if (char === "\n") row++;
+    bytes.push(byte);
+  }
+  return Buffer.from(bytes);
 }
 
-// Send a file through the accounting system's door: SFTP (sftp://user:password@host:port/inbox), or
-// HTTPS (https://host/files, with ACCOUNTING_TOKEN).
+// Talk to the accounting system's SFTP door (sftp://user:password@host:port/inbox).
+function overSftp<T>(to: URL, use: (sftp: ssh2.SFTPWrapper, done: (error?: Error | null, value?: T) => void) => void) {
+  return new Promise<T>((resolve, reject) => {
+    const client = new ssh2.Client();
+    client
+      .on("ready", () =>
+        client.sftp((error, sftp) => {
+          if (error) return reject(error);
+          use(sftp, (useError, value) => {
+            client.end();
+            if (useError) reject(useError);
+            else resolve(value as T);
+          });
+        }),
+      )
+      .on("error", reject)
+      .connect({
+        host: to.hostname,
+        port: Number(to.port || 22),
+        username: decodeURIComponent(to.username),
+        password: decodeURIComponent(to.password),
+      });
+  });
+}
+
+// Send a file through the accounting system's door: SFTP, into /inbox, or HTTPS (https://host/files, with
+// ACCOUNTING_TOKEN).
 export async function send(url: string, name: string, bytes: Buffer): Promise<void> {
   const to = new URL(url);
   if (to.protocol === "sftp:") {
-    await new Promise<void>((resolve, reject) => {
-      const client = new ssh2.Client();
-      client
-        .on("ready", () =>
-          client.sftp((error, sftp) => {
-            if (error) return reject(error);
-            sftp.writeFile(to.pathname.replace(/\/$/, "") + "/" + name, bytes, (writeError) => {
-              client.end();
-              if (writeError) reject(writeError);
-              else resolve();
-            });
-          }),
-        )
-        .on("error", reject)
-        .connect({
-          host: to.hostname,
-          port: Number(to.port || 22),
-          username: decodeURIComponent(to.username),
-          password: decodeURIComponent(to.password),
-        });
-    });
-    return;
+    return overSftp<void>(to, (sftp, done) =>
+      sftp.writeFile(to.pathname.replace(/\/$/, "") + "/" + name, bytes, (error) => done(error)),
+    );
   }
   const answer = await fetch(url.replace(/\/$/, "") + "/" + name, {
     method: "PUT",
@@ -95,6 +123,27 @@ export async function send(url: string, name: string, bytes: Buffer): Promise<vo
     body: new Uint8Array(bytes),
   });
   if (!answer.ok) throw new Error("The accounting system answered " + answer.status + ": " + (await answer.text()));
+}
+
+// What the accounting system said about a file, or null while it hasn't said yet. Over SFTP the receipt
+// is a text file in /outbox, next to /inbox: "ACCEPTED" or "REJECTED" on its first line.
+export async function receipt(url: string, name: string): Promise<{ accepted: boolean; text: string } | null> {
+  const to = new URL(url);
+  if (to.protocol === "sftp:") {
+    const text = await overSftp<string | null>(to, (sftp, done) =>
+      sftp.readFile(to.pathname.replace(/inbox\/?$/, "outbox") + "/" + name + ".receipt.txt", (error, data) =>
+        error ? done(null, null) : done(null, data.toString()),
+      ),
+    );
+    return text === null ? null : { accepted: text.startsWith("ACCEPTED"), text: text.trim() };
+  }
+  const answer = await fetch(url.replace(/\/$/, "") + "/" + name + "/receipt", {
+    headers: { authorization: "Bearer " + setting("ACCOUNTING_TOKEN") },
+  });
+  if (answer.status === 404) return null;
+  if (!answer.ok) throw new Error("The accounting system answered " + answer.status);
+  const body = await answer.json();
+  return { accepted: body.status === "accepted", text: JSON.stringify(body) };
 }
 
 // Yesterday on the clinic's clock: at 02:00 in Stockholm, the day that just ended.
@@ -137,4 +186,24 @@ export async function sendFile(job: Job) {
       target: [exports.businessId, exports.day],
       set: { name, sentAt: new Date().toISOString(), status: "sent", receipt: null },
     });
+  // Sent is not booked: the accounting system checks the file after it arrives. Come back for its
+  // receipt in a little while (and later, if it isn't there yet).
+  await enqueue(db(), {
+    business: business.id,
+    kind: "accounting-receipt",
+    payload: { day, name },
+    key: "receipt-" + job.id,
+    runAt: new Date(Date.now() + 5_000),
+  });
+}
+
+// The job: read the receipt and record what it says. No receipt yet is a failure, so the job is tried
+// again later, as any failed job is.
+export async function readReceipt(job: Job) {
+  const said = await receipt(setting("ACCOUNTING_URL"), job.payload.name);
+  if (!said) throw new Error("No receipt yet for " + job.payload.name);
+  await db()
+    .update(exports)
+    .set({ status: said.accepted ? "accepted" : "rejected", receipt: said.text })
+    .where(and(eq(exports.businessId, job.business), eq(exports.day, job.payload.day)));
 }

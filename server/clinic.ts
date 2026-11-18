@@ -6,6 +6,7 @@ import {
   bookings,
   businesses,
   deposits,
+  exports,
   holdsMade,
   openingHours,
   providerEvents,
@@ -564,6 +565,15 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     return row?.staffId ?? null;
   }
 
+  // What became of a day's file to the accounting system: null if none has been sent.
+  async function accountingFile(day: string) {
+    const [row] = await db
+      .select({ status: exports.status, receipt: exports.receipt, sentAt: exports.sentAt })
+      .from(exports)
+      .where(and(eq(exports.businessId, business), eq(exports.day, day)));
+    return row ?? null;
+  }
+
   return {
     about,
     offers,
@@ -579,10 +589,12 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
     depositsOf,
     refunded,
     confirmedOn,
+    accountingFile,
   };
 }
 
 type Clinic = ReturnType<typeof clinicIn>;
+export type AccountingFile = NonNullable<Awaited<ReturnType<Clinic["accountingFile"]>>>;
 
 // The one way into a business's data. It takes the business first. Each call runs in a transaction
 // that tells Postgres which business it is for (app.business) and takes the role clinic_app, whose
@@ -614,6 +626,7 @@ export function makeClinic(db: NodePgDatabase, business: string, now: () => Date
     depositsOf: inBusiness((c) => c.depositsOf),
     refunded: inBusiness((c) => c.refunded),
     confirmedOn: inBusiness((c) => c.confirmedOn),
+    accountingFile: inBusiness((c) => c.accountingFile),
   };
 }
 

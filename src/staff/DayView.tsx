@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import type { Day } from "../../server/clinic.ts";
+import type { AccountingFile, Day } from "../../server/clinic.ts";
 import { cancelVisit } from "../staffActions";
 import type { Staff } from "../session";
 import { may } from "../../server/permissions.ts";
@@ -26,11 +26,28 @@ function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// What became of the day's file: the night after the day, the accounting system books it or says why not.
+function fileStatus(file: AccountingFile | null): string {
+  if (!file) return "Not sent yet";
+  return { sent: "Sent, no answer yet", accepted: "Booked", rejected: "Rejected" }[file.status] ?? file.status;
+}
+
 const kronor = new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK", maximumFractionDigits: 0 });
 
 // A day at the clinic, as the staff see it: a column for each physiotherapist, each booking at its time.
 // What each person sees and may cancel comes from permissions.ts, as the action's check does.
-export function DayView({ date, day, who }: { date: string; day: Day; who: Staff }) {
+export function DayView({
+  date,
+  day,
+  who,
+  file,
+}: {
+  date: string;
+  day: Day;
+  who: Staff;
+  // The day's file to the accounting system, for those who see the takings: undefined for everyone else.
+  file?: AccountingFile | null;
+}) {
   // A held booking isn't one yet: it counts once the person opens the link we emailed them.
   const visits = day.people.flatMap((person) => person.visits).filter((visit) => !visit.held);
   const value = visits.reduce((sum, visit) => sum + visit.priceSek, 0);
@@ -62,6 +79,13 @@ export function DayView({ date, day, who }: { date: string; day: Day; who: Staff
             <div>
               <dt className="text-small text-ink-600">Value</dt>
               <dd className="text-title">{kronor.format(value)}</dd>
+            </div>
+          )}
+          {file !== undefined && (
+            <div>
+              <dt className="text-small text-ink-600">To the accountant</dt>
+              <dd className="text-title">{fileStatus(file)}</dd>
+              {file?.status === "rejected" && <dd className="text-danger-700 max-w-xs text-small">{file.receipt}</dd>}
             </div>
           )}
         </dl>

@@ -5,6 +5,7 @@ import { about, clinicHere, here } from "../../../business";
 import { fromInstant } from "../../../../server/clock.ts";
 import { DayView } from "../../../staff/DayView";
 import { staffOnly } from "../../../session";
+import { may } from "../../../../server/permissions.ts";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: "Day · " + (await about(await here())).name };
@@ -27,5 +28,8 @@ async function Day({ searchParams }: Pick<PageProps<"/staff">, "searchParams">) 
   const who = await staffOnly();
   const parsed = Choice.safeParse(await searchParams);
   const date = (parsed.success && parsed.data.day) || fromInstant(new Date().toISOString()).date;
-  return <DayView date={date} day={await (await clinicHere()).day(date)} who={who} />;
+  const clinic = await clinicHere();
+  // Only those who see the takings see what became of the day's file to the accountant.
+  const file = may(who, { do: "see the takings" }) ? await clinic.accountingFile(date) : undefined;
+  return <DayView date={date} day={await clinic.day(date)} who={who} file={file} />;
 }
