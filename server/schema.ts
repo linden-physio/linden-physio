@@ -13,6 +13,8 @@ export const businesses = pgTable("businesses", {
   hosts: text().array().notNull(),
   // How its staff sign in: "microsoft" (a work account in its Entra ID) or "email" (a link).
   staffSignIn: text("staff_sign_in").notNull().default("email"),
+  // Its colours, darkest first: for links, for buttons, and for light backgrounds.
+  colours: text().array().notNull().default(["#23614a", "#2f7d5b", "#eaf4ef"]),
 });
 
 const businessId = () =>

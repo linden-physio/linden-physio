@@ -131,13 +131,14 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
   const live = () => or(isNotNull(bookings.confirmedAt), gt(bookings.heldUntil, now().toISOString()));
 
   // The business's name and address, as its pages show them, and how its staff sign in.
-  async function about(): Promise<{ id: string; name: string; email: string; staffSignIn: string }> {
+  async function about(): Promise<{ id: string; name: string; email: string; staffSignIn: string; colours: string[] }> {
     const [row] = await db
       .select({
         id: businesses.id,
         name: businesses.name,
         email: businesses.email,
         staffSignIn: businesses.staffSignIn,
+        colours: businesses.colours,
       })
       .from(businesses)
       .where(eq(businesses.id, business));

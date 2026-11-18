@@ -148,6 +148,13 @@
       "when": 1795012547540,
       "tag": "0020_pay_the_deposit_back",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795013334328,
+      "tag": "0021_give_each_business_its_colours",
+      "breakpoints": true
     }
   ]
 }
