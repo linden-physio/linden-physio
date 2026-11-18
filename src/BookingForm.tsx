@@ -16,6 +16,24 @@ import { Field } from "./Field";
 import { Message, type FormState } from "./Message";
 import { book } from "./actions";
 import { clockTime } from "./clockTime";
+import { reportError } from "./reportError";
+
+// A server action is a fetch underneath, and on a train between two masts the fetch fails. An action
+// that throws takes the page down to error.tsx, with the time picked and the name typed gone. So catch
+// it: keep the form, and say what happened.
+async function bookOrSayWhy(previous: FormState, data: FormData): Promise<FormState> {
+  try {
+    return await book(previous, data);
+  } catch (error) {
+    reportError(error);
+    return {
+      kind: "failed",
+      message: navigator.onLine
+        ? "Something went wrong on our side, and your booking wasn't made. Please pick the time again and press Book."
+        : "You seem to be offline, so your booking wasn't sent. Once you're connected, pick the time again and press Book.",
+    };
+  }
+}
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -39,7 +57,7 @@ export function BookingForm({
   onSending: () => void;
 }) {
   // The booking's state comes from the server action's answer; pending is true while it runs.
-  const [booking, bookAction, pending] = useActionState(book, { kind: "editing" });
+  const [booking, bookAction, pending] = useActionState(bookOrSayWhy, { kind: "editing" });
   // What the browser has to say itself: a time not picked yet.
   const [formState, setFormState] = useState<FormState>({ kind: "editing" });
   const shown: FormState = pending ? { kind: "sending" } : formState.kind !== "editing" ? formState : booking;
