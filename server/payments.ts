@@ -24,7 +24,9 @@ export async function startDeposit(deposit: {
     amount: deposit.amountSek * 100,
     currency: "sek",
     description: deposit.description,
-    metadata: { business: deposit.business, booking: deposit.booking },
+    // Kept with the payment, and sent back in Kassa's events: which business and booking it's for, and
+    // the address the person booked at, for the links in the confirmation email.
+    metadata: { business: deposit.business, booking: deposit.booking, origin: new URL(deposit.back).origin },
   });
   const form = new URL("/elements/card", setting("KASSA_URL"));
   form.searchParams.set("key", setting("KASSA_PUBLISHABLE_KEY"));

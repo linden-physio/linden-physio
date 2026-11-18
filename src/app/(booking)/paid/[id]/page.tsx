@@ -59,6 +59,15 @@ async function Answer({ params, searchParams }: PageProps<"/paid/[id]">) {
       </section>
     );
   }
+  // Paid, and Kassa's event is on its way: look again in a moment.
+  if (intent?.status === "succeeded") {
+    return (
+      <section role="status" className="flex flex-col gap-2 rounded-md bg-ready-100 px-4 py-3">
+        <meta httpEquiv="refresh" content="2" />
+        <p>We have your payment. Your booking will be confirmed in a moment, and we'll email {booking.email}.</p>
+      </section>
+    );
+  }
   // Not paid yet: the payment was refused, or the bank said no. Show the card form again.
   const form = new URL("/elements/card", setting("KASSA_URL"));
   form.searchParams.set("key", setting("KASSA_PUBLISHABLE_KEY"));
