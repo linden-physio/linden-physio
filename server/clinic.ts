@@ -17,6 +17,7 @@ import type { FreeTimes, NewBooking } from "./schemas.ts";
 import { toInstant, fromInstant } from "./clock.ts";
 import { freeTimes, nearestFreeTime, type Booking, type OpeningHours } from "./slots.ts";
 import { db } from "./db.ts";
+import { enqueue } from "./jobs.ts";
 
 function addMinutes(time: string, minutes: number): string {
   const total = Number(time.slice(0, 2)) * 60 + Number(time.slice(3)) + minutes;
@@ -399,7 +400,14 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
   // it again when we didn't answer in time, or answered with an error after doing the work. The event's
   // row, in the same transaction as the work, makes the second one change nothing: either both are
   // saved or neither is.
-  async function paid(id: string, paymentIntent: string, amountOre: number, event: EventSeen): Promise<Paid> {
+  // origin is the address the person booked at, for the link in the email this queues.
+  async function paid(
+    id: string,
+    paymentIntent: string,
+    amountOre: number,
+    event: EventSeen,
+    origin: string,
+  ): Promise<Paid> {
     const [first] = await db
       .insert(providerEvents)
       .values({ id: event.id, businessId: business, type: event.type, receivedAt: now().toISOString() })
@@ -424,6 +432,11 @@ function clinicIn(db: NodePgTransaction<any, any>, business: string, now: () => 
       .onConflictDoNothing()
       .returning({ id: deposits.id });
     if (!kept) return "heard already";
+    // The confirmation email, as a job saved with the booking: it's sent once this is, and sent again
+    // later if sending fails, however the webhook's answer goes.
+    if (confirmed) {
+      await enqueue(db, { business, kind: "confirmed", payload: { booking: id, origin }, key: "confirmed-" + id });
+    }
     return confirmed ? "confirmed" : "gone";
   }
 

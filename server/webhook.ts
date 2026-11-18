@@ -1,6 +1,5 @@
 import { makeClinic } from "./clinic.ts";
 import { db } from "./db.ts";
-import { emailConfirmed } from "./confirmations.ts";
 import { setting } from "./env.ts";
 import { provider } from "./payments.ts";
 
@@ -19,12 +18,8 @@ export async function kassaEvent(raw: string, signature: string | null): Promise
   if (event.type === "payment_intent.succeeded") {
     const intent = event.data.object;
     const { business, booking, origin } = intent.metadata;
-    const result = await makeClinic(db(), business).paid(booking, intent.id, intent.amount_received, event);
-    // The booking is saved. If the email fails now, answering with an error would only make Kassa send
-    // the event again, which now changes nothing: so keep the error in the log, and answer 200.
-    if (result === "confirmed") {
-      await emailConfirmed(business, booking, origin).catch((error) => console.error(error));
-    }
+    // Confirms the booking, and queues the email, in one transaction.
+    await makeClinic(db(), business).paid(booking, intent.id, intent.amount_received, event, origin);
   }
   return { status: 200, body: { received: true } };
 }

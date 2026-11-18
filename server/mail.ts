@@ -8,8 +8,9 @@ type Mail = { from: string; to: string; subject: string; text: string; html: str
 // In production, mail goes through Resend, an email provider, over its HTTP API. Resend refuses to
 // send from a business's domain until the domain's DNS records say it may (SPF) and publish the key
 // it signs with (DKIM). Gmail then checks both, and DMARC, before it trusts the mail.
-async function sendWithResend(mail: Mail, key: string) {
-  const { error } = await new Resend(key).emails.send(mail);
+// idempotencyKey: Resend sends a mail with the same key once, for 24 hours, however many times we ask.
+async function sendWithResend(mail: Mail, key: string, idempotencyKey?: string) {
+  const { error } = await new Resend(key).emails.send(mail, idempotencyKey ? { idempotencyKey } : undefined);
   // Resend answers with an error instead of throwing, like "The lindenphysio.com domain is not
   // verified." Throw it, so it isn't lost.
   if (error) throw new Error("Resend refused the mail: " + error.message);
@@ -24,8 +25,8 @@ function transport(): Transporter {
   return opened;
 }
 
-export async function sendMail(mail: Mail) {
+export async function sendMail(mail: Mail, idempotencyKey?: string) {
   const key = process.env.RESEND_API_KEY;
-  if (key) await sendWithResend(mail, key);
+  if (key) await sendWithResend(mail, key, idempotencyKey);
   else await transport().sendMail(mail);
 }

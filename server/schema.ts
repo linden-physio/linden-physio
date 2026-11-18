@@ -1,4 +1,4 @@
-import { pgTable, serial, timestamp, text, integer, time, index, uuid, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, serial, timestamp, text, integer, time, index, uuid, primaryKey, jsonb } from "drizzle-orm/pg-core";
 
 // The app's tables, described in TypeScript. drizzle-kit compares this file with the migrations
 // so far and writes the SQL for what changed.
@@ -135,3 +135,24 @@ export const refunds = pgTable("refunds", {
   amountOre: integer("amount_ore").notNull(),
   refundedAt: timestamp("refunded_at", { withTimezone: true, mode: "string" }).notNull(),
 });
+
+// Work to do after the answer has gone: an email to send, say. One row for each job; a worker takes the
+// ones that are due, does them, and marks them done, or puts them back with a later time.
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: serial().primaryKey(),
+    businessId: businessId(),
+    // What to do, like "reminder", and what with.
+    kind: text().notNull(),
+    payload: jsonb().notNull(),
+    // The same work asked for twice (a schedule that runs twice) is one job.
+    key: text().unique(),
+    runAt: timestamp("run_at", { withTimezone: true, mode: "string" }).notNull(),
+    attempts: integer().notNull().default(0),
+    lastError: text("last_error"),
+    doneAt: timestamp("done_at", { withTimezone: true, mode: "string" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [index("jobs_due_idx").on(table.runAt)],
+);

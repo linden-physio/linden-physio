@@ -26,7 +26,13 @@ test("a paid deposit confirms the booking, and is kept even when the booking is 
   if (maja.kind !== "held") return;
   assert.equal(maja.depositSek, 200);
   assert.equal(
-    await clinic.paid(maja.id, "pi_maja", 20000, { id: "evt_1", type: "payment_intent.succeeded" }),
+    await clinic.paid(
+      maja.id,
+      "pi_maja",
+      20000,
+      { id: "evt_1", type: "payment_intent.succeeded" },
+      "http://localhost:5173",
+    ),
     "confirmed",
   );
   assert.equal((await clinic.booking(maja.id))?.confirmed, true);
@@ -42,7 +48,13 @@ test("a paid deposit confirms the booking, and is kept even when the booking is 
   if (tove.kind !== "held") assert.fail();
   time = new Date("2026-11-09T18:20:00.000Z");
   assert.equal(
-    await clinic.paid(tove.id, "pi_tove", 20000, { id: "evt_2", type: "payment_intent.succeeded" }),
+    await clinic.paid(
+      tove.id,
+      "pi_tove",
+      20000,
+      { id: "evt_2", type: "payment_intent.succeeded" },
+      "http://localhost:5173",
+    ),
     "confirmed",
   );
 
@@ -52,11 +64,26 @@ test("a paid deposit confirms the booking, and is kept even when the booking is 
   if (ida.kind !== "held") assert.fail();
   time = new Date("2026-11-09T18:40:00.000Z");
   assert.equal((await hold("Sara", "203.0.113.4")).kind, "held");
-  assert.equal(await clinic.paid(ida.id, "pi_ida", 20000, { id: "evt_3", type: "payment_intent.succeeded" }), "gone");
+  assert.equal(
+    await clinic.paid(
+      ida.id,
+      "pi_ida",
+      20000,
+      { id: "evt_3", type: "payment_intent.succeeded" },
+      "http://localhost:5173",
+    ),
+    "gone",
+  );
 
   // Kassa sends Maja's event again: nothing changes.
   assert.equal(
-    await clinic.paid(maja.id, "pi_maja", 20000, { id: "evt_1", type: "payment_intent.succeeded" }),
+    await clinic.paid(
+      maja.id,
+      "pi_maja",
+      20000,
+      { id: "evt_1", type: "payment_intent.succeeded" },
+      "http://localhost:5173",
+    ),
     "heard already",
   );
 

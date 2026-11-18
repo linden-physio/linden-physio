@@ -34,7 +34,13 @@ test("a deposit comes back when the booking is cancelled a day ahead, or by the 
       "203.0.113." + ++n,
     );
     if (held.kind !== "held") assert.fail(held.kind);
-    await clinic.paid(held.id, "pi_" + name, 20000, { id: "evt_" + name, type: "payment_intent.succeeded" });
+    await clinic.paid(
+      held.id,
+      "pi_" + name,
+      20000,
+      { id: "evt_" + name, type: "payment_intent.succeeded" },
+      "http://localhost:5173",
+    );
     return held.id;
   }
   const refunded = async () =>
