@@ -54,7 +54,8 @@ async function Answer({ params, searchParams }: PageProps<"/paid/[id]">) {
           {booking.service} with {booking.with}, {when(booking.startsAt)}
         </p>
         <p>
-          We have your {booking.depositSek} kr deposit, and your booking is confirmed. We've emailed {booking.email}.
+          We have your {booking.depositSek} kr deposit, and your booking is confirmed. We're sending a confirmation to{" "}
+          {booking.email}.
         </p>
       </section>
     );
