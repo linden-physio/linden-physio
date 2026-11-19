@@ -12,12 +12,13 @@ export type Handlers = Record<string, (job: Job) => Promise<void>>;
 export const MAX_ATTEMPTS = 8;
 
 // Add a job. key makes the same work asked for twice one job: the second is ignored. tx may be a
-// transaction, so the job is saved with the work that asked for it, or not at all.
+// transaction, so the job is saved with the work that asked for it, or not at all. Says whether this
+// call added it.
 export async function enqueue(
   tx: Pick<NodePgDatabase, "insert">,
   job: { business: string; kind: string; payload: Record<string, string>; key?: string; runAt?: Date },
-) {
-  await tx
+): Promise<boolean> {
+  const added = await tx
     .insert(jobs)
     .values({
       businessId: job.business,
@@ -26,7 +27,9 @@ export async function enqueue(
       key: job.key,
       runAt: (job.runAt ?? new Date()).toISOString(),
     })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ id: jobs.id });
+  return added.length > 0;
 }
 
 // How long to wait before trying a failed job again: 30 seconds, then a minute, two, four…

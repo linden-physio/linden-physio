@@ -20,13 +20,14 @@ test("two workers never take the same job, a failed one comes back later, and a 
   // Forty reminders; the schedule runs twice, and the keys keep them forty.
   for (let run = 0; run < 2; run++) {
     for (let i = 0; i < 40; i++) {
-      await enqueue(db, {
+      const added = await enqueue(db, {
         business: "linden",
         kind: "reminder",
         payload: { n: String(i) },
         key: "reminder-" + i,
         runAt: time,
       });
+      assert.equal(added, run === 0, "only the first run adds the job");
     }
   }
   const [{ count }] = (await db.execute<{ count: number }>(sql`SELECT count(*)::int AS count FROM jobs`)).rows;

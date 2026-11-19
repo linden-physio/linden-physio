@@ -20,13 +20,14 @@ export async function queueReminders(now = new Date()): Promise<number> {
   let queued = 0;
   for (const { id: business } of await db().select({ id: businesses.id }).from(businesses)) {
     for (const booking of await makeClinic(db(), business).confirmedOn(date)) {
-      await enqueue(db(), {
+      // A second run finds each reminder queued already: count only the new ones.
+      const added = await enqueue(db(), {
         business,
         kind: "reminder",
         payload: { booking: booking.id },
         key: "reminder-" + booking.id,
       });
-      queued++;
+      if (added) queued++;
     }
   }
   return queued;
