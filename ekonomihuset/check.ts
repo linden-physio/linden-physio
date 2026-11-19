@@ -52,8 +52,9 @@ export function check(bytes: Uint8Array): Receipt {
     if (NOT_TEXT.test(line)) {
       return reject(
         row,
+        // The quoted text with the odd characters, as it is in the file (its quotes are the file's own).
         "Characters that aren't letters: " +
-          JSON.stringify(line.match(/"[^"]*"/g)?.find((t) => NOT_TEXT.test(t)) ?? line) +
+          (line.match(/"[^"]*"/g)?.find((t) => NOT_TEXT.test(t)) ?? JSON.stringify(line)) +
           ". Is the file in code page 437?",
       );
     }
