@@ -198,15 +198,18 @@ export async function queueFiles(now = new Date(), again?: string) {
     .selectDistinct({ id: businesses.id })
     .from(businesses)
     .innerJoin(services, and(eq(services.businessId, businesses.id), gt(services.depositSek, 0)));
+  let queued = 0;
   for (const { id } of taking) {
-    await enqueue(db(), {
+    // A second run in the same night finds the night's file queued already: count only the new ones.
+    const added = await enqueue(db(), {
       business: id,
       kind: "accounting-file",
       payload: { day },
       key: "accounting-" + id + "-" + day + (again ? "-again-" + now.getTime() : ""),
     });
+    if (added) queued++;
   }
-  return taking.length;
+  return queued;
 }
 
 // The job: make the day's file and send it.
